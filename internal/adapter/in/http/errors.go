@@ -17,6 +17,7 @@ func translate(err error) error {
 
 	switch {
 	case errors.Is(err, service.ErrInvalidUnsealKeyCount),
+		errors.Is(err, service.ErrUnsupportedWalletType),
 		errors.Is(err, secretstore.ErrInvalidUnsealSlot),
 		errors.Is(err, secretstore.ErrInvalidUnsealKeySize):
 		return huma.Error400BadRequest(err.Error())
@@ -25,7 +26,9 @@ func translate(err error) error {
 		return huma.Error401Unauthorized("invalid unseal credential")
 
 	case errors.Is(err, portout.ErrAlreadyInitialized),
+		errors.Is(err, portout.ErrKeyRootAlreadyExists),
 		errors.Is(err, service.ErrNotInitialized),
+		errors.Is(err, secretstore.ErrVaultSealed),
 		errors.Is(err, secretstore.ErrDuplicateUnsealSlot),
 		errors.Is(err, secretstore.ErrVaultAlreadyUnsealed),
 		errors.Is(err, secretstore.ErrUnsealConfigurationLocked):

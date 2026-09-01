@@ -246,6 +246,29 @@ func TestDuplicateKeyRootSeedIsRejected(t *testing.T) {
 	}
 }
 
+func TestRemoveKeyRootSeedDestroysStoredSeed(t *testing.T) {
+	store := mustUnsealedStore(t)
+	defer store.Clear()
+
+	seed := mustSecret(t, []byte("master-seed"))
+	if err := store.StoreKeyRootSeed("root-1", seed); err != nil {
+		t.Fatal(err)
+	}
+
+	store.RemoveKeyRootSeed("root-1")
+
+	if !seed.IsDestroyed() {
+		t.Fatal("removed key root seed should be destroyed")
+	}
+
+	err := store.WithKeyRootSeed("root-1", func([]byte) error {
+		return nil
+	})
+	if !errors.Is(err, ErrKeyRootSeedNotFound) {
+		t.Fatalf("expected ErrKeyRootSeedNotFound, got %v", err)
+	}
+}
+
 func TestClearDestroysAllRuntimeSecrets(t *testing.T) {
 	store := mustUnsealedStore(t)
 	seed := mustSecret(t, []byte("master-seed"))

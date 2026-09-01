@@ -300,6 +300,25 @@ func (s *Store) StoreKeyRootSeed(
 
 // WithKeyRootSeed provides temporary callback-only access
 // to a decrypted HD root seed.
+// RemoveKeyRootSeed destroys and removes one cached plaintext HD root seed.
+//
+// It is primarily used to roll back runtime state when durable KeyRoot
+// persistence fails after the seed was moved into SecretStore.
+func (s *Store) RemoveKeyRootSeed(rootID string) {
+	if rootID == "" {
+		return
+	}
+
+	s.mu.Lock()
+	seed := s.keyRootSeeds[rootID]
+	delete(s.keyRootSeeds, rootID)
+	s.mu.Unlock()
+
+	if seed != nil {
+		seed.Destroy()
+	}
+}
+
 func (s *Store) WithKeyRootSeed(
 	rootID string,
 	fn func([]byte) error,

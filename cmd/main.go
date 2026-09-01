@@ -86,6 +86,7 @@ func run() error {
 	defer sqlDB.Close()
 
 	unsealKeySlotRepository := postgresadapter.NewUnsealKeySlotRepository(entClient)
+	keyRootRepository := postgresadapter.NewKeyRootRepository(entClient)
 
 	// ---- runtime secret ownership ----
 	secrets := secretstore.New()
@@ -98,9 +99,15 @@ func run() error {
 		cfg.MaxUnsealSize,
 	)
 
+	keyRootService := service.NewKeyRootService(
+		keyRootRepository,
+		secrets,
+	)
+
 	// ---- inbound HTTP adapter ----
 	httpHandler := httpadapter.New(httpadapter.Deps{
-		Seal: sealService,
+		Seal:     sealService,
+		KeyRoots: keyRootService,
 	})
 
 	httpSrv := pkghttp.New(pkghttp.Config{
