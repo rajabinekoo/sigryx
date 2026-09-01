@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+#
+# commit-msg: enforce Conventional Commits (https://www.conventionalcommits.org).
+#
+# Header format:  type(scope)?(!)?: subject
+#   type     one of the allowed types below
+#   scope    optional, lower-kebab/snake (e.g. identity, gateway, payment)
+#   !        optional, marks a breaking change
+#   subject  non-empty, no trailing period, header <= 100 chars
+#
+# Examples
+#   feat(identity): add refresh-token rotation
+#   fix(gateway): drop stale APISIX upstreams on reload
+#   refactor!: split auth out of the identity module
+#
+# Merge / revert / fixup / squash messages are exempt.
+set -euo pipefail
+
+MSG_FILE="$1"
+# First non-comment, non-blank line is the header.
+HEADER="$(grep -vE '^\s*#' "$MSG_FILE" | grep -vE '^\s*$' | head -n1 || true)"
+
+# Exemptions: git-generated messages we don't control.
+case "$HEADER" in
+  "Merge "*|"Revert "*|"fixup! "*|"squash! "*|"Reapply "*) exit 0 ;;
+esac
+
+TYPES='feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert'
+PATTERN="^(${TYPES})(\([a-z0-9._-]+\))?(!)?: .+"
+
+fail() {
+  echo "✗ commit message rejected: $1" >&2
+  echo >&2
+  echo "  Conventional Commits required:  type(scope)?: subject" >&2
+  echo "  Allowed types: ${TYPES//|/, }" >&2
+  echo >&2
+  echo "  e.g.  feat(identity): add refresh-token rotation" >&2
+  echo "  Your header:  ${HEADER:-<empty>}" >&2
+  exit 1
+}
+
+[ -n "$HEADER" ] || fail "empty commit message"
+
+if ! printf '%s' "$HEADER" | grep -qE "$PATTERN"; then
+  fail "header does not match Conventional Commits"
+fi
+
+if [ "${#HEADER}" -gt 100 ]; then
+  fail "header is ${#HEADER} chars (max 100)"
+fi
+
+case "$HEADER" in
+  *.) fail "subject must not end with a period" ;;
+esac
+
+exit 0

@@ -1,0 +1,41 @@
+package config
+
+import (
+	"time"
+
+	configpkg "github.com/rajabinekoo/sigryx/pkg/config"
+)
+
+type Config struct {
+	ServiceName string `env:"SERVICE_NAME" envDefault:"sigryx"`
+
+	// Logging
+	LogLevel  string `env:"LOG_LEVEL" envDefault:"info"`
+	LogFormat string `env:"LOG_FORMAT" envDefault:"json"`
+
+	// Postgres
+	PostgresDSN             string        `env:"POSTGRES_DSN,required"`
+	PostgresMaxConns        int32         `env:"POSTGRES_MAX_CONNS" envDefault:"10"`
+	PostgresMinConns        int32         `env:"POSTGRES_MIN_CONNS" envDefault:"2"`
+	PostgresConnectTimeout  time.Duration `env:"POSTGRES_CONNECT_TIMEOUT" envDefault:"5s"`
+	PostgresMaxConnLifetime time.Duration `env:"POSTGRES_MAX_CONN_LIFETIME" envDefault:"30m"`
+	PostgresMaxConnIdleTime time.Duration `env:"POSTGRES_MAX_CONN_IDLE_TIME" envDefault:"5m"`
+
+	// http
+	HTTPAddr            string        `env:"HTTP_ADDR" envDefault:":8080"`
+	HTTPReadTimeout     time.Duration `env:"HTTP_READ_TIMEOUT" envDefault:"15s"`
+	HTTPWriteTimeout    time.Duration `env:"HTTP_WRITE_TIMEOUT" envDefault:"15s"`
+	HTTPIdleTimeout     time.Duration `env:"HTTP_IDLE_TIMEOUT" envDefault:"60s"`
+	HTTPShutdownTimeout time.Duration `env:"HTTP_SHUTDOWN_TIMEOUT" envDefault:"15s"`
+
+	// App Envs
+	MaxUnsealSize int `env:"MAX_UNSEAL_SIZE,required"`
+}
+
+func Load() (Config, error) {
+	var cfg Config
+	if err := configpkg.Load(&cfg); err != nil {
+		return Config{}, err
+	}
+	return cfg, nil
+}

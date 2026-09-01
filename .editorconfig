@@ -1,0 +1,54 @@
+# EditorConfig — editor-level enforcement of indentation, line endings, and
+# whitespace. Pairs with .gitattributes (which is the git-level safety net).
+# Editors with EditorConfig support: VS Code (extension), JetBrains (built-in),
+# Vim/Neovim (plugin), Sublime (plugin).
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+# Go — gofmt uses tabs; size is convention only (tabs render per editor).
+[*.go]
+indent_style = tab
+indent_size = 8
+
+# Makefiles REQUIRE tabs — non-tab indent breaks the parser.
+[{Makefile,*.mk}]
+indent_style = tab
+
+# Shell scripts — Google shell style guide is 2-space; many teams prefer 4.
+# Going with 2 for consistency with YAML/JSON neighbours.
+[*.{sh,bash}]
+indent_style = space
+indent_size = 2
+
+# Proto — Google style is 2-space.
+[*.proto]
+indent_style = space
+indent_size = 2
+
+# YAML / JSON / TOML — 2-space.
+[*.{yaml,yml,json,toml,hcl}]
+indent_style = space
+indent_size = 2
+
+# SQL — 2-space; migrations are auto-generated but human-readable.
+[*.sql]
+indent_style = space
+indent_size = 2
+
+# Markdown — two trailing spaces = explicit line break, so keep them.
+[*.md]
+trim_trailing_whitespace = false
+indent_size = 2
+
+# Dockerfile — 4-space is the docker docs convention.
+[{Dockerfile,*.Dockerfile}]
+indent_style = space
+indent_size = 4

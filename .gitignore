@@ -1,1 +1,48 @@
-.idea
+# Binaries
+/bin/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test / coverage / profiling
+*.test
+*.out
+coverage.*
+*.prof
+*.pprof
+
+# Env files — applies at root and to every service (per-service .env lives in services/<name>/.env)
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Go workspace files
+go.work
+go.work.sum
+
+# Vendored deps (delete this block if you commit vendor/)
+vendor/
+
+# Build / runtime output
+/dist/
+/build/
+/tmp/
+/.gocache/
+/.gomodcache/
+*.log
+
+# Generated proto (uncomment if you decide to gitignore generated code)
+# **/*.pb.go
+# **/*_grpc.pb.go

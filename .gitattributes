@@ -1,0 +1,52 @@
+# Force LF line endings repo-wide so Windows contributors don't ship CRLF
+# files that break Makefile parsing, shell scripts on macOS/Linux runners,
+# and produce churn-only diffs. Pairs with .editorconfig for editor-level
+# enforcement.
+
+# Default: detect text vs binary, normalize text to LF on commit + checkout.
+* text=auto eol=lf
+
+# -------- Explicit text (defensive — covers files git might mis-detect) ----
+*.go         text eol=lf
+*.proto      text eol=lf
+*.sh         text eol=lf
+*.bash       text eol=lf
+*.sql        text eol=lf
+*.yaml       text eol=lf
+*.yml        text eol=lf
+*.json       text eol=lf
+*.md         text eol=lf
+*.toml       text eol=lf
+*.hcl        text eol=lf
+*.lua        text eol=lf
+*.js         text eol=lf
+*.ts         text eol=lf
+Makefile     text eol=lf
+Dockerfile   text eol=lf
+*.Dockerfile text eol=lf
+
+# -------- Binary (never diff, never text-convert) -------------------------
+*.pdf   binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.eot   binary
+*.svg   binary
+
+# -------- Generated (hide from diffs + exclude from GitLab language stats) -
+*.pb.go                                       linguist-generated=true
+*_grpc.pb.go                                  linguist-generated=true
+backend/proto/**                              linguist-generated=true
+backend/services/*/internal/ent/*.go          linguist-generated=true
+backend/services/*/internal/ent/**/*.go       linguist-generated=true
+go.sum                                        linguist-generated=true
+backend/services/*/migrations/atlas.sum       linguist-generated=true
+
+# -------- If you ever add Windows-only scripts, force CRLF ----------------
+# *.bat text eol=crlf
+# *.cmd text eol=crlf

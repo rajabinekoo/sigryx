@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+#
+# pre-commit:
+#   1. block direct commits to protected branches (main/master/develop)
+#   2. require feature branches to follow  service/type/short-description
+#
+# Branch name format:  service/type/description
+#   service      the owning service, lower-kebab (e.g. identity, gateway, payment)
+#   type         feat|fix|hotfix|chore|docs|refactor|perf|test|build|ci|release
+#   description  lower-kebab, may contain / for grouping
+#   e.g.         identity/feat/otp-verification
+#
+# Escape hatch for emergencies:  ALLOW_DIRECT_COMMIT=1 git commit ...
+set -euo pipefail
+
+BRANCH="$(git symbolic-ref --short -q HEAD || true)"
+
+# Detached HEAD (rebase, bisect, etc.) — nothing to validate.
+[ -n "$BRANCH" ] || exit 0
+
+PROTECTED='main master develop'
+for p in $PROTECTED; do
+  if [ "$BRANCH" = "$p" ]; then
+    if [ "${ALLOW_DIRECT_COMMIT:-0}" = "1" ]; then
+      echo "⚠ ALLOW_DIRECT_COMMIT set — permitting direct commit to '$BRANCH'." >&2
+      exit 0
+    fi
+    echo "✗ direct commits to '$BRANCH' are not allowed." >&2
+    echo "  Create a feature branch:  git switch -c feat/<short-description>" >&2
+    echo "  Emergency override:       ALLOW_DIRECT_COMMIT=1 git commit ..." >&2
+    exit 1
+  fi
+done
+
+BRANCH_TYPES='feat|fix|hotfix|chore|docs|refactor|perf|test|build|ci|release'
+if ! printf '%s' "$BRANCH" | grep -qE "^[a-z][a-z0-9-]*/(${BRANCH_TYPES})/[a-z0-9._/-]+$"; then
+  echo "✗ branch '$BRANCH' does not follow the naming rule." >&2
+  echo "  Expected:  <service>/<type>/<short-description>" >&2
+  echo "  Types:     ${BRANCH_TYPES//|/, }" >&2
+  echo "  e.g.       identity/feat/otp-verification" >&2
+  echo "  Rename:    git branch -m <service>/<type>/<short-description>" >&2
+  exit 1
+fi
+
+exit 0

@@ -1,0 +1,8 @@
+.git
+.githooks
+bin
+tmp
+**/.env
+**/vault-init.json
+**/approle.json
+**/*.log
