@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/rajabinekoo/sigryx/internal/securemem"
+	"github.com/rajabinekoo/sigryx/pkg/securemem"
 )
 
 const UnsealKeySize = sha256.Size

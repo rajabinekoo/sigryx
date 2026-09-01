@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rajabinekoo/sigryx/internal/securemem"
+	"github.com/rajabinekoo/sigryx/pkg/securemem"
 )
 
 func TestNewRejectsInvalidUnsealKeyCount(t *testing.T) {

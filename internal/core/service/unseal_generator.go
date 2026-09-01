@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/rajabinekoo/sigryx/internal/core/domain"
-	"github.com/rajabinekoo/sigryx/internal/cryptox"
+	cryptox2 "github.com/rajabinekoo/sigryx/pkg/cryptox"
 )
 
 type GeneratedUnseal struct {
@@ -29,20 +29,20 @@ func GenerateUnseal(slotID domain.UnsealSlotID) (*GeneratedUnseal, error) {
 	}
 
 	// 1. Generate the real unseal key.
-	unsealKey, err := cryptox.RandomKey()
+	unsealKey, err := cryptox2.RandomKey()
 	if err != nil {
 		return nil, fmt.Errorf("generate unseal key: %w", err)
 	}
 
 	// 2. Generate the owner-side secret.
-	ownerSecret, err := cryptox.RandomKey()
+	ownerSecret, err := cryptox2.RandomKey()
 	if err != nil {
 		zeroize(unsealKey)
 		return nil, fmt.Errorf("generate owner secret: %w", err)
 	}
 
 	// 3. Generate the server-side key material.
-	serverKeyMaterial, err := cryptox.RandomKey()
+	serverKeyMaterial, err := cryptox2.RandomKey()
 	if err != nil {
 		zeroize(unsealKey)
 		zeroize(ownerSecret)
@@ -61,7 +61,7 @@ func GenerateUnseal(slotID domain.UnsealSlotID) (*GeneratedUnseal, error) {
 	defer zeroize(wrappingKey[:])
 
 	// 5. Encrypt the real unseal key using AES-256-GCM.
-	wrappedKey, err := cryptox.Seal(
+	wrappedKey, err := cryptox2.Seal(
 		wrappingKey[:],
 		unsealKey,
 		unsealAAD(slotID),

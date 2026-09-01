@@ -11,12 +11,12 @@ import (
 	httpadapter "github.com/rajabinekoo/sigryx/internal/adapter/in/http"
 	"github.com/rajabinekoo/sigryx/internal/config"
 	pkgent "github.com/rajabinekoo/sigryx/internal/ent"
-	"github.com/rajabinekoo/sigryx/internal/secretstore"
-	"github.com/rajabinekoo/sigryx/internal/securemem"
 	"github.com/rajabinekoo/sigryx/pkg/entpg"
 	pkghttp "github.com/rajabinekoo/sigryx/pkg/httpserver"
 	"github.com/rajabinekoo/sigryx/pkg/logger"
 	pkgpostgres "github.com/rajabinekoo/sigryx/pkg/postgres"
+	"github.com/rajabinekoo/sigryx/pkg/secretstore"
+	"github.com/rajabinekoo/sigryx/pkg/securemem"
 	"golang.org/x/sync/errgroup"
 )
 
