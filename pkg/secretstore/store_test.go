@@ -10,24 +10,37 @@ import (
 	"github.com/rajabinekoo/sigryx/pkg/securemem"
 )
 
-func TestNewRejectsInvalidUnsealKeyCount(t *testing.T) {
-	_, err := New(0)
+func TestConfigureRejectsInvalidUnsealKeyCount(t *testing.T) {
+	store := New()
 
+	err := store.ConfigureUnsealKeyCount(0)
 	if !errors.Is(err, ErrInvalidUnsealKeyCount) {
-		t.Fatalf(
-			"expected ErrInvalidUnsealKeyCount, got %v",
-			err,
-		)
+		t.Fatalf("expected ErrInvalidUnsealKeyCount, got %v", err)
 	}
 }
 
-func TestSubmitUnsealKeysDerivesVaultKeyBySlotOrder(
-	t *testing.T,
-) {
-	store, err := New(3)
-	if err != nil {
+func TestConfigureIsIdempotentForSameCount(t *testing.T) {
+	store := New()
+
+	if err := store.ConfigureUnsealKeyCount(3); err != nil {
 		t.Fatal(err)
 	}
+	if err := store.ConfigureUnsealKeyCount(3); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestConfigureRejectsDifferentCountAfterConfiguration(t *testing.T) {
+	store := newConfiguredStore(t, 3)
+
+	err := store.ConfigureUnsealKeyCount(2)
+	if !errors.Is(err, ErrUnsealConfigurationLocked) {
+		t.Fatalf("expected ErrUnsealConfigurationLocked, got %v", err)
+	}
+}
+
+func TestSubmitUnsealKeysDerivesVaultKeyBySlotOrder(t *testing.T) {
+	store := newConfiguredStore(t, 3)
 	defer store.Clear()
 
 	k1 := repeatedKey(0x11)
@@ -38,186 +51,95 @@ func TestSubmitUnsealKeysDerivesVaultKeyBySlotOrder(
 	s2 := mustSecret(t, k2)
 	s3 := mustSecret(t, k3)
 
-	//
-	// Deliberately submit out of order.
-	//
 	progress, err := store.SubmitUnsealKey(3, s3)
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	assertProgress(t, progress, 1, 3, false)
 
 	progress, err = store.SubmitUnsealKey(1, s1)
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	assertProgress(t, progress, 2, 3, false)
 
 	progress, err = store.SubmitUnsealKey(2, s2)
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	assertProgress(t, progress, 3, 3, true)
 
-	if !store.IsUnsealed() {
-		t.Fatal("store should be unsealed")
+	if !s1.IsDestroyed() || !s2.IsDestroyed() || !s3.IsDestroyed() {
+		t.Fatal("all real unseal keys must be destroyed after derivation")
 	}
 
-	//
-	// Real unseal keys must be gone immediately
-	// after VaultEncryptionKey derivation.
-	//
-	if !s1.IsDestroyed() {
-		t.Fatal("slot 1 key was not destroyed")
-	}
-
-	if !s2.IsDestroyed() {
-		t.Fatal("slot 2 key was not destroyed")
-	}
-
-	if !s3.IsDestroyed() {
-		t.Fatal("slot 3 key was not destroyed")
-	}
-
-	expected := deriveExpectedVaultKey(
-		k1,
-		k2,
-		k3,
-	)
-
-	err = store.WithVaultEncryptionKey(
-		func(actual []byte) error {
-			if !bytes.Equal(actual, expected) {
-				t.Fatal(
-					"vault encryption key was not derived in slot order",
-				)
-			}
-
-			return nil
-		},
-	)
-	if err != nil {
+	expected := deriveExpectedVaultKey(k1, k2, k3)
+	if err := store.WithVaultEncryptionKey(func(actual []byte) error {
+		if !bytes.Equal(actual, expected) {
+			t.Fatal("vault encryption key was not derived in slot order")
+		}
+		return nil
+	}); err != nil {
 		t.Fatal(err)
 	}
 
-	//
-	// Progress must remain completed even though
-	// individual unseal keys were destroyed.
-	//
-	progress = store.Progress()
-
-	assertProgress(t, progress, 3, 3, true)
+	assertProgress(t, store.Progress(), 3, 3, true)
 }
 
-func TestDuplicateSlotIsRejectedAndIncomingKeyDestroyed(
-	t *testing.T,
-) {
-	store, err := New(2)
-	if err != nil {
-		t.Fatal(err)
-	}
+func TestDuplicateSlotIsRejectedAndIncomingKeyDestroyed(t *testing.T) {
+	store := newConfiguredStore(t, 2)
 	defer store.Clear()
 
-	first := mustSecret(
-		t,
-		repeatedKey(0x11),
-	)
+	first := mustSecret(t, repeatedKey(0x11))
+	duplicate := mustSecret(t, repeatedKey(0x22))
 
-	duplicate := mustSecret(
-		t,
-		repeatedKey(0x22),
-	)
-
-	_, err = store.SubmitUnsealKey(1, first)
-	if err != nil {
+	if _, err := store.SubmitUnsealKey(1, first); err != nil {
 		t.Fatal(err)
 	}
 
-	progress, err := store.SubmitUnsealKey(
-		1,
-		duplicate,
-	)
-
+	progress, err := store.SubmitUnsealKey(1, duplicate)
 	if !errors.Is(err, ErrDuplicateUnsealSlot) {
-		t.Fatalf(
-			"expected ErrDuplicateUnsealSlot, got %v",
-			err,
-		)
+		t.Fatalf("expected ErrDuplicateUnsealSlot, got %v", err)
 	}
-
 	if !duplicate.IsDestroyed() {
 		t.Fatal("duplicate key should be destroyed")
 	}
-
 	if first.IsDestroyed() {
-		t.Fatal("accepted key should still be pending")
+		t.Fatal("accepted key should remain pending")
 	}
-
 	assertProgress(t, progress, 1, 2, false)
 }
 
 func TestInvalidSlotDestroysIncomingKey(t *testing.T) {
-	store, err := New(3)
-	if err != nil {
-		t.Fatal(err)
-	}
+	store := newConfiguredStore(t, 3)
 	defer store.Clear()
 
-	key := mustSecret(
-		t,
-		repeatedKey(0x11),
-	)
-
-	_, err = store.SubmitUnsealKey(4, key)
-
+	key := mustSecret(t, repeatedKey(0x11))
+	_, err := store.SubmitUnsealKey(4, key)
 	if !errors.Is(err, ErrInvalidUnsealSlot) {
-		t.Fatalf(
-			"expected ErrInvalidUnsealSlot, got %v",
-			err,
-		)
+		t.Fatalf("expected ErrInvalidUnsealSlot, got %v", err)
 	}
-
 	if !key.IsDestroyed() {
 		t.Fatal("rejected key should be destroyed")
 	}
 }
 
 func TestInvalidUnsealKeySizeIsRejected(t *testing.T) {
-	store, err := New(1)
-	if err != nil {
-		t.Fatal(err)
-	}
+	store := newConfiguredStore(t, 1)
 	defer store.Clear()
 
-	key := mustSecret(
-		t,
-		[]byte("too-short"),
-	)
-
-	_, err = store.SubmitUnsealKey(1, key)
-
+	key := mustSecret(t, []byte("too-short"))
+	_, err := store.SubmitUnsealKey(1, key)
 	if !errors.Is(err, ErrInvalidUnsealKeySize) {
-		t.Fatalf(
-			"expected ErrInvalidUnsealKeySize, got %v",
-			err,
-		)
+		t.Fatalf("expected ErrInvalidUnsealKeySize, got %v", err)
 	}
-
 	if !key.IsDestroyed() {
 		t.Fatal("invalid key should be destroyed")
 	}
 }
 
-func TestResetUnsealAttemptDestroysPendingKeys(
-	t *testing.T,
-) {
-	store, err := New(3)
-	if err != nil {
-		t.Fatal(err)
-	}
+func TestResetUnsealAttemptDestroysPendingKeys(t *testing.T) {
+	store := newConfiguredStore(t, 3)
 	defer store.Clear()
 
 	k1 := mustSecret(t, repeatedKey(0x11))
@@ -226,7 +148,6 @@ func TestResetUnsealAttemptDestroysPendingKeys(
 	if _, err := store.SubmitUnsealKey(1, k1); err != nil {
 		t.Fatal(err)
 	}
-
 	if _, err := store.SubmitUnsealKey(2, k2); err != nil {
 		t.Fatal(err)
 	}
@@ -234,213 +155,102 @@ func TestResetUnsealAttemptDestroysPendingKeys(
 	if err := store.ResetUnsealAttempt(); err != nil {
 		t.Fatal(err)
 	}
-
-	if !k1.IsDestroyed() {
-		t.Fatal("slot 1 key should be destroyed")
+	if !k1.IsDestroyed() || !k2.IsDestroyed() {
+		t.Fatal("pending unseal keys should be destroyed")
 	}
-
-	if !k2.IsDestroyed() {
-		t.Fatal("slot 2 key should be destroyed")
-	}
-
-	assertProgress(
-		t,
-		store.Progress(),
-		0,
-		3,
-		false,
-	)
+	assertProgress(t, store.Progress(), 0, 3, false)
 }
 
-func TestResetUnsealAttemptFailsAfterUnseal(
-	t *testing.T,
-) {
+func TestResetUnsealAttemptFailsAfterUnseal(t *testing.T) {
 	store := mustUnsealedStore(t)
 	defer store.Clear()
 
 	err := store.ResetUnsealAttempt()
-
 	if !errors.Is(err, ErrVaultAlreadyUnsealed) {
-		t.Fatalf(
-			"expected ErrVaultAlreadyUnsealed, got %v",
-			err,
-		)
+		t.Fatalf("expected ErrVaultAlreadyUnsealed, got %v", err)
 	}
 }
 
-func TestWithVaultEncryptionKeyFailsWhileSealed(
-	t *testing.T,
-) {
-	store, err := New(1)
-	if err != nil {
-		t.Fatal(err)
-	}
+func TestWithVaultEncryptionKeyFailsWhileSealed(t *testing.T) {
+	store := newConfiguredStore(t, 1)
 
-	err = store.WithVaultEncryptionKey(
-		func([]byte) error {
-			return nil
-		},
-	)
-
+	err := store.WithVaultEncryptionKey(func([]byte) error { return nil })
 	if !errors.Is(err, ErrVaultSealed) {
-		t.Fatalf(
-			"expected ErrVaultSealed, got %v",
-			err,
-		)
+		t.Fatalf("expected ErrVaultSealed, got %v", err)
 	}
 }
 
-func TestVaultEncryptionKeyCallbackErrorIsPropagated(
-	t *testing.T,
-) {
+func TestVaultEncryptionKeyCallbackErrorIsPropagated(t *testing.T) {
 	store := mustUnsealedStore(t)
 	defer store.Clear()
 
 	expected := errors.New("callback failed")
-
-	err := store.WithVaultEncryptionKey(
-		func([]byte) error {
-			return expected
-		},
-	)
-
+	err := store.WithVaultEncryptionKey(func([]byte) error { return expected })
 	if !errors.Is(err, expected) {
-		t.Fatalf(
-			"expected callback error, got %v",
-			err,
-		)
+		t.Fatalf("expected callback error, got %v", err)
 	}
 }
 
-func TestStoreKeyRootSeedFailsWhileSealed(
-	t *testing.T,
-) {
-	store, err := New(1)
-	if err != nil {
-		t.Fatal(err)
-	}
+func TestStoreKeyRootSeedFailsWhileSealed(t *testing.T) {
+	store := newConfiguredStore(t, 1)
 
-	seed := mustSecret(
-		t,
-		[]byte("master-seed"),
-	)
-
-	err = store.StoreKeyRootSeed(
-		"root-1",
-		seed,
-	)
-
+	seed := mustSecret(t, []byte("master-seed"))
+	err := store.StoreKeyRootSeed("root-1", seed)
 	if !errors.Is(err, ErrVaultSealed) {
-		t.Fatalf(
-			"expected ErrVaultSealed, got %v",
-			err,
-		)
+		t.Fatalf("expected ErrVaultSealed, got %v", err)
 	}
-
 	if !seed.IsDestroyed() {
 		t.Fatal("rejected seed should be destroyed")
 	}
 }
 
-func TestKeyRootSeedCanBeStoredAndRead(
-	t *testing.T,
-) {
+func TestKeyRootSeedCanBeStoredAndRead(t *testing.T) {
 	store := mustUnsealedStore(t)
 	defer store.Clear()
 
-	expected := []byte(
-		"this-is-a-master-seed",
-	)
+	expected := []byte("this-is-a-master-seed")
+	seed := mustSecret(t, expected)
 
-	seed := mustSecret(
-		t,
-		expected,
-	)
-
-	if err := store.StoreKeyRootSeed(
-		"root-1",
-		seed,
-	); err != nil {
+	if err := store.StoreKeyRootSeed("root-1", seed); err != nil {
 		t.Fatal(err)
 	}
-
-	err := store.WithKeyRootSeed(
-		"root-1",
-		func(actual []byte) error {
-			if !bytes.Equal(actual, expected) {
-				t.Fatal("unexpected key root seed")
-			}
-
-			return nil
-		},
-	)
-	if err != nil {
+	if err := store.WithKeyRootSeed("root-1", func(actual []byte) error {
+		if !bytes.Equal(actual, expected) {
+			t.Fatal("unexpected key root seed")
+		}
+		return nil
+	}); err != nil {
 		t.Fatal(err)
 	}
 }
 
-func TestDuplicateKeyRootSeedIsRejected(
-	t *testing.T,
-) {
+func TestDuplicateKeyRootSeedIsRejected(t *testing.T) {
 	store := mustUnsealedStore(t)
 	defer store.Clear()
 
-	first := mustSecret(
-		t,
-		[]byte("seed-one"),
-	)
+	first := mustSecret(t, []byte("seed-one"))
+	second := mustSecret(t, []byte("seed-two"))
 
-	second := mustSecret(
-		t,
-		[]byte("seed-two"),
-	)
-
-	if err := store.StoreKeyRootSeed(
-		"root-1",
-		first,
-	); err != nil {
+	if err := store.StoreKeyRootSeed("root-1", first); err != nil {
 		t.Fatal(err)
 	}
-
-	err := store.StoreKeyRootSeed(
-		"root-1",
-		second,
-	)
-
+	err := store.StoreKeyRootSeed("root-1", second)
 	if !errors.Is(err, ErrKeyRootSeedExists) {
-		t.Fatalf(
-			"expected ErrKeyRootSeedExists, got %v",
-			err,
-		)
+		t.Fatalf("expected ErrKeyRootSeedExists, got %v", err)
 	}
-
 	if !second.IsDestroyed() {
-		t.Fatal(
-			"duplicate seed should be destroyed",
-		)
+		t.Fatal("duplicate seed should be destroyed")
 	}
-
 	if first.IsDestroyed() {
-		t.Fatal(
-			"existing seed should remain valid",
-		)
+		t.Fatal("existing seed should remain valid")
 	}
 }
 
-func TestClearDestroysAllRuntimeSecrets(
-	t *testing.T,
-) {
+func TestClearDestroysAllRuntimeSecrets(t *testing.T) {
 	store := mustUnsealedStore(t)
+	seed := mustSecret(t, []byte("master-seed"))
 
-	seed := mustSecret(
-		t,
-		[]byte("master-seed"),
-	)
-
-	if err := store.StoreKeyRootSeed(
-		"root-1",
-		seed,
-	); err != nil {
+	if err := store.StoreKeyRootSeed("root-1", seed); err != nil {
 		t.Fatal(err)
 	}
 
@@ -449,62 +259,23 @@ func TestClearDestroysAllRuntimeSecrets(
 	if store.IsUnsealed() {
 		t.Fatal("store should be sealed after Clear")
 	}
-
 	if !seed.IsDestroyed() {
-		t.Fatal(
-			"key root seed should be destroyed",
-		)
+		t.Fatal("key root seed should be destroyed")
 	}
-
-	assertProgress(
-		t,
-		store.Progress(),
-		0,
-		1,
-		false,
-	)
-
-	err := store.WithVaultEncryptionKey(
-		func([]byte) error {
-			return nil
-		},
-	)
-
-	if !errors.Is(err, ErrVaultSealed) {
-		t.Fatalf(
-			"expected ErrVaultSealed, got %v",
-			err,
-		)
-	}
+	assertProgress(t, store.Progress(), 0, 1, false)
 }
 
-// This test catches an important locking regression.
-//
-// WithVaultEncryptionKey must not keep Store.mu locked while
-// executing the callback, otherwise calling another Store
-// operation from inside the callback would deadlock.
-func TestVaultKeyCallbackCanReenterStore(
-	t *testing.T,
-) {
+func TestVaultKeyCallbackCanReenterStore(t *testing.T) {
 	store := mustUnsealedStore(t)
 	defer store.Clear()
 
-	seed := mustSecret(
-		t,
-		[]byte("master-seed"),
-	)
-
+	seed := mustSecret(t, []byte("master-seed"))
 	done := make(chan error, 1)
 
 	go func() {
-		done <- store.WithVaultEncryptionKey(
-			func([]byte) error {
-				return store.StoreKeyRootSeed(
-					"root-1",
-					seed,
-				)
-			},
-		)
+		done <- store.WithVaultEncryptionKey(func([]byte) error {
+			return store.StoreKeyRootSeed("root-1", seed)
+		})
 	}()
 
 	select {
@@ -512,81 +283,56 @@ func TestVaultKeyCallbackCanReenterStore(
 		if err != nil {
 			t.Fatal(err)
 		}
-
 	case <-time.After(time.Second):
-		t.Fatal(
-			"possible deadlock while re-entering Store from callback",
-		)
+		t.Fatal("possible deadlock while re-entering Store from callback")
 	}
+}
+
+func newConfiguredStore(t *testing.T, required int) *Store {
+	t.Helper()
+
+	store := New()
+	if err := store.ConfigureUnsealKeyCount(required); err != nil {
+		t.Fatal(err)
+	}
+	return store
 }
 
 func mustUnsealedStore(t *testing.T) *Store {
 	t.Helper()
 
-	store, err := New(1)
+	store := newConfiguredStore(t, 1)
+	key := mustSecret(t, repeatedKey(0x42))
+	progress, err := store.SubmitUnsealKey(1, key)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	key := mustSecret(
-		t,
-		repeatedKey(0x42),
-	)
-
-	progress, err := store.SubmitUnsealKey(
-		1,
-		key,
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	if !progress.Unsealed {
 		t.Fatal("store did not become unsealed")
 	}
-
 	return store
 }
 
-func mustSecret(
-	t *testing.T,
-	data []byte,
-) *securemem.Secret {
+func mustSecret(t *testing.T, data []byte) *securemem.Secret {
 	t.Helper()
 
-	//
-	// securemem.New takes ownership and wipes its input,
-	// therefore pass it an independent copy.
-	//
-	input := append(
-		[]byte(nil),
-		data...,
-	)
-
+	input := append([]byte(nil), data...)
 	secret, err := securemem.New(input)
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	return secret
 }
 
 func repeatedKey(value byte) []byte {
-	return bytes.Repeat(
-		[]byte{value},
-		UnsealKeySize,
-	)
+	return bytes.Repeat([]byte{value}, UnsealKeySize)
 }
 
-func deriveExpectedVaultKey(
-	keys ...[]byte,
-) []byte {
+func deriveExpectedVaultKey(keys ...[]byte) []byte {
 	hasher := sha256.New()
-
 	for _, key := range keys {
 		_, _ = hasher.Write(key)
 	}
-
 	return hasher.Sum(nil)
 }
 
@@ -600,26 +346,12 @@ func assertProgress(
 	t.Helper()
 
 	if progress.Submitted != submitted {
-		t.Fatalf(
-			"expected %d submitted, got %d",
-			submitted,
-			progress.Submitted,
-		)
+		t.Fatalf("expected %d submitted, got %d", submitted, progress.Submitted)
 	}
-
 	if progress.Required != required {
-		t.Fatalf(
-			"expected %d required, got %d",
-			required,
-			progress.Required,
-		)
+		t.Fatalf("expected %d required, got %d", required, progress.Required)
 	}
-
 	if progress.Unsealed != unsealed {
-		t.Fatalf(
-			"expected unsealed=%v, got %v",
-			unsealed,
-			progress.Unsealed,
-		)
+		t.Fatalf("expected unsealed=%v, got %v", unsealed, progress.Unsealed)
 	}
 }

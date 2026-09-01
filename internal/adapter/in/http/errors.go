@@ -1,14 +1,40 @@
 package http
 
 import (
+	"errors"
+
 	"github.com/danielgtaylor/huma/v2"
+	portout "github.com/rajabinekoo/sigryx/internal/core/port/out"
+	"github.com/rajabinekoo/sigryx/internal/core/service"
 	pkgerrors "github.com/rajabinekoo/sigryx/pkg/errors"
+	"github.com/rajabinekoo/sigryx/pkg/secretstore"
 )
 
 func translate(err error) error {
 	if err == nil {
 		return nil
 	}
+
+	switch {
+	case errors.Is(err, service.ErrInvalidUnsealKeyCount),
+		errors.Is(err, secretstore.ErrInvalidUnsealSlot),
+		errors.Is(err, secretstore.ErrInvalidUnsealKeySize):
+		return huma.Error400BadRequest(err.Error())
+
+	case errors.Is(err, service.ErrInvalidCredential):
+		return huma.Error401Unauthorized("invalid unseal credential")
+
+	case errors.Is(err, portout.ErrAlreadyInitialized),
+		errors.Is(err, service.ErrNotInitialized),
+		errors.Is(err, secretstore.ErrDuplicateUnsealSlot),
+		errors.Is(err, secretstore.ErrVaultAlreadyUnsealed),
+		errors.Is(err, secretstore.ErrUnsealConfigurationLocked):
+		return huma.Error409Conflict(err.Error())
+
+	case errors.Is(err, service.ErrCorruptedUnsealSlot):
+		return huma.Error500InternalServerError("internal error")
+	}
+
 	switch pkgerrors.KindOf(err) {
 	case pkgerrors.KindInvalidInput:
 		return huma.Error400BadRequest(err.Error())
@@ -18,9 +44,7 @@ func translate(err error) error {
 		return huma.Error403Forbidden(err.Error())
 	case pkgerrors.KindNotFound:
 		return huma.Error404NotFound(err.Error())
-	case pkgerrors.KindAlreadyExists:
-		return huma.Error409Conflict(err.Error())
-	case pkgerrors.KindConflict:
+	case pkgerrors.KindAlreadyExists, pkgerrors.KindConflict:
 		return huma.Error409Conflict(err.Error())
 	case pkgerrors.KindRateLimited:
 		return huma.Error429TooManyRequests(err.Error())

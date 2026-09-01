@@ -3,10 +3,6 @@ package domain
 // UnsealSlotID is the stable position of an unseal credential in the N-of-N set.
 type UnsealSlotID int
 
-// UnsealKey is the real key material recovered during unseal.
-// It must never be persisted or returned to the caller.
-type UnsealKey []byte
-
 // OwnerSecret is the secret material held by an unseal owner.
 // Sigryx returns it once during initialization and never persists it.
 type OwnerSecret []byte

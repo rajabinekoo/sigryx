@@ -46,4 +46,8 @@ var (
 	ErrKeyRootSeedNotFound = errors.New(
 		"secretstore: key root seed not found",
 	)
+
+	ErrUnsealConfigurationLocked = errors.New(
+		"secretstore: unseal configuration is locked",
+	)
 )

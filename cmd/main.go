@@ -9,7 +9,9 @@ import (
 	"syscall"
 
 	httpadapter "github.com/rajabinekoo/sigryx/internal/adapter/in/http"
+	postgresadapter "github.com/rajabinekoo/sigryx/internal/adapter/out/persistence/postgres"
 	"github.com/rajabinekoo/sigryx/internal/config"
+	"github.com/rajabinekoo/sigryx/internal/core/service"
 	pkgent "github.com/rajabinekoo/sigryx/internal/ent"
 	"github.com/rajabinekoo/sigryx/pkg/entpg"
 	pkghttp "github.com/rajabinekoo/sigryx/pkg/httpserver"
@@ -29,10 +31,7 @@ func main() {
 			),
 		).Error(
 			"server exited with error",
-			slog.Any(
-				"err",
-				err,
-			),
+			slog.Any("err", err),
 		)
 		os.Exit(1)
 	}
@@ -40,17 +39,8 @@ func main() {
 
 func run() error {
 	if err := securemem.Initialize(); err != nil {
-		return fmt.Errorf(
-			"initialize secure memory: %w",
-			err,
-		)
+		return fmt.Errorf("initialize secure memory: %w", err)
 	}
-
-	secretStore, err := secretstore.New(3)
-	if err != nil {
-		return err
-	}
-	defer secretStore.Clear()
 
 	cfg, err := config.Load()
 	if err != nil {
@@ -75,7 +65,7 @@ func run() error {
 	)
 	defer stop()
 
-	// ---- outbound persistance adapters ----
+	// ---- outbound persistence adapters ----
 	pool, err := pkgpostgres.New(ctx, pkgpostgres.Config{
 		DSN:             cfg.PostgresDSN,
 		MaxConns:        cfg.PostgresMaxConns,
@@ -95,8 +85,24 @@ func run() error {
 	defer entDriver.Close()
 	defer sqlDB.Close()
 
+	unsealKeySlotRepository := postgresadapter.NewUnsealKeySlotRepository(entClient)
+
+	// ---- runtime secret ownership ----
+	secrets := secretstore.New()
+	defer secrets.Clear()
+
+	// ---- core services ----
+	sealService := service.NewSealService(
+		unsealKeySlotRepository,
+		secrets,
+		cfg.MaxUnsealSize,
+	)
+
 	// ---- inbound HTTP adapter ----
-	httpHandler := httpadapter.New(httpadapter.Deps{})
+	httpHandler := httpadapter.New(httpadapter.Deps{
+		Seal: sealService,
+	})
+
 	httpSrv := pkghttp.New(pkghttp.Config{
 		Addr:            cfg.HTTPAddr,
 		ReadTimeout:     cfg.HTTPReadTimeout,
@@ -105,10 +111,9 @@ func run() error {
 		ShutdownTimeout: cfg.HTTPShutdownTimeout,
 	}, log, httpHandler)
 
-	// ---- start services and jobs ----
+	// ---- start services ----
 	g, gctx := errgroup.WithContext(ctx)
 
-	// Start HTTP server
 	g.Go(func() error {
 		log.Info("starting HTTP server", slog.String("addr", cfg.HTTPAddr))
 		if err := httpSrv.Serve(gctx); err != nil {
@@ -122,6 +127,5 @@ func run() error {
 	}
 
 	log.Info("all services stopped gracefully")
-
 	return nil
 }

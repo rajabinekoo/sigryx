@@ -2,13 +2,16 @@ module github.com/rajabinekoo/sigryx
 
 go 1.26.5
 
+replace github.com/clipperhouse/displaywidth => github.com/clipperhouse/displaywidth v0.6.0
+
 require (
-	entgo.io/ent v0.14.6
+	entgo.io/ent v0.14.5
 	github.com/caarlos0/env/v11 v11.4.1
 	github.com/danielgtaylor/huma/v2 v2.39.1
 	github.com/gin-gonic/gin v1.12.0
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.10.0
+	golang.org/x/sync v0.22.0
 	golang.org/x/sys v0.47.0
 )
 
@@ -54,7 +57,6 @@ require (
 	golang.org/x/crypto v0.55.0 // indirect
 	golang.org/x/mod v0.38.0 // indirect
 	golang.org/x/net v0.58.0 // indirect
-	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
 	google.golang.org/protobuf v1.36.12 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

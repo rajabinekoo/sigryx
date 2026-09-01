@@ -8,7 +8,7 @@ COMPOSE        	?= docker compose -f $(COMPOSE_FILE)
 IMAGE_REGISTRY 	?= crypto_payment
 IMAGE_TAG      	?= dev
 
-export POSTGRES_DSN ?= postgres://sigryx:sigryx@localhost:5432/sigryx?sslmode=disable&search_path=vault
+export POSTGRES_DSN ?= postgres://sigryx:sigryx@localhost:5432/sigryx?sslmode=disable
 
 dotenv = set -a; [ -f .env ] && . .env; set +a;
 
@@ -21,6 +21,28 @@ git-hooks:
 .PHONY: ent-generate
 ent-generate:
 	$(GO) generate ./internal/ent/...
+
+.PHONY: migrate-diff
+migrate-diff:
+	@test -n "$(name)" || (echo "name is required, e.g. make migrate-diff name=add_sessions_table" && exit 1)
+	@$(call dotenv) $(ATLAS) migrate diff $(name) --env local
+
+.PHONY: migrate-up
+migrate-up:
+	@$(call dotenv) $(ATLAS) migrate apply --env local
+
+.PHONY: migrate-lint
+migrate-lint:
+	@$(call dotenv) $(ATLAS) migrate lint --env local --latest 1
+
+.PHONY: migrate-status
+migrate-status:
+	@$(call dotenv) $(ATLAS) migrate status --env local
+
+.PHONY: migrate-hash
+migrate-hash:
+	@$(call dotenv) $(ATLAS) migrate hash --env local
+
 
 .PHONY: run-server
 run-server:

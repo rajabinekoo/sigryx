@@ -47,24 +47,40 @@ type Store struct {
 	keyRootSeeds map[string]*securemem.Secret
 }
 
-func New(requiredUnsealKeys int) (*Store, error) {
-	if requiredUnsealKeys < 1 {
-		return nil, ErrInvalidUnsealKeyCount
+func New() *Store {
+	return &Store{
+		keyRootSeeds: make(map[string]*securemem.Secret),
+	}
+}
+
+func (s *Store) ConfigureUnsealKeyCount(required int) error {
+	if required < 1 {
+		return ErrInvalidUnsealKeyCount
 	}
 
-	return &Store{
-		requiredUnsealKeys: requiredUnsealKeys,
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-		// +1 because index 0 is unused.
-		unsealKeys: make(
-			[]*securemem.Secret,
-			requiredUnsealKeys+1,
-		),
+	if s.requiredUnsealKeys == required {
+		return nil
+	}
 
-		keyRootSeeds: make(
-			map[string]*securemem.Secret,
-		),
-	}, nil
+	if s.requiredUnsealKeys != 0 ||
+		s.submittedUnsealKeys != 0 ||
+		s.vaultEncryptionKey != nil {
+
+		return ErrUnsealConfigurationLocked
+	}
+
+	s.requiredUnsealKeys = required
+
+	// Index 0 intentionally unused.
+	s.unsealKeys = make(
+		[]*securemem.Secret,
+		required+1,
+	)
+
+	return nil
 }
 
 // SubmitUnsealKey transfers ownership of key to Store.

@@ -7,9 +7,11 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humagin"
 	"github.com/gin-gonic/gin"
+	portin "github.com/rajabinekoo/sigryx/internal/core/port/in"
 )
 
 type Deps struct {
+	Seal portin.SealUseCase
 }
 
 func New(deps Deps) http.Handler {
@@ -20,12 +22,16 @@ func New(deps Deps) http.Handler {
 	engine := gin.New()
 	engine.Use(gin.Recovery())
 
-	config := huma.DefaultConfig("Vault API", "v1")
+	config := huma.DefaultConfig("Sigryx API", "v1")
 	config.DocsPath = ""
 	config.CreateHooks = nil
 
 	api := humagin.New(engine, config)
 	registerHealthRoutes(api)
+
+	if deps.Seal != nil {
+		registerSealRoutes(api, deps.Seal)
+	}
 
 	engine.GET("/docs", func(c *gin.Context) {
 		c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(scalarDocsHTML))
