@@ -10,3 +10,16 @@ git-hooks:
 .PHONY: ent-generate
 ent-generate:
 	$(GO) generate ./internal/ent/...
+	
+.PHONY: fmt vet test test-race ent-generate check
+fmt:
+	gofmt -w $$(find . -name '*.go' -not -path './vendor/*')
+vet:
+	go vet ./...
+test:
+	go test ./...
+test-race:
+	go test -race ./...
+ent-generate:
+	go generate ./internal/ent/...
+check: fmt vet test test-race
