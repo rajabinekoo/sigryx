@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/rajabinekoo/sigryx/internal/secretstore"
 	"github.com/rajabinekoo/sigryx/internal/securemem"
 )
 
@@ -33,5 +34,12 @@ func run() error {
 			err,
 		)
 	}
+
+	secretStore, err := secretstore.New(3)
+	if err != nil {
+		return err
+	}
+	defer secretStore.Clear()
+
 	return nil
 }
