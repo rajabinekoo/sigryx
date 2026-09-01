@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	httpadapter "github.com/rajabinekoo/sigryx/internal/adapter/in/http"
+	"github.com/rajabinekoo/sigryx/internal/adapter/out/blockchain/ethereum"
 	postgresadapter "github.com/rajabinekoo/sigryx/internal/adapter/out/persistence/postgres"
 	"github.com/rajabinekoo/sigryx/internal/config"
 	"github.com/rajabinekoo/sigryx/internal/core/service"
@@ -87,6 +88,7 @@ func run() error {
 
 	unsealKeySlotRepository := postgresadapter.NewUnsealKeySlotRepository(entClient)
 	keyRootRepository := postgresadapter.NewKeyRootRepository(entClient)
+	walletRepository := postgresadapter.NewWalletRepository(pool)
 
 	// ---- runtime secret ownership ----
 	secrets := secretstore.New()
@@ -104,10 +106,18 @@ func run() error {
 		secrets,
 	)
 
+	walletService := service.NewWalletService(
+		walletRepository,
+		keyRootRepository,
+		secrets,
+		ethereum.New(),
+	)
+
 	// ---- inbound HTTP adapter ----
 	httpHandler := httpadapter.New(httpadapter.Deps{
 		Seal:     sealService,
 		KeyRoots: keyRootService,
+		Wallets:  walletService,
 	})
 
 	httpSrv := pkghttp.New(pkghttp.Config{

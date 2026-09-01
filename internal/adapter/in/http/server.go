@@ -13,6 +13,7 @@ import (
 type Deps struct {
 	Seal     portin.SealUseCase
 	KeyRoots portin.KeyRootUseCase
+	Wallets  portin.WalletUseCase
 }
 
 func New(deps Deps) http.Handler {
@@ -36,6 +37,10 @@ func New(deps Deps) http.Handler {
 
 	if deps.KeyRoots != nil {
 		registerKeyRootRoutes(api, deps.KeyRoots)
+	}
+
+	if deps.Wallets != nil {
+		registerWalletRoutes(api, deps.Wallets)
 	}
 
 	engine.GET("/docs", func(c *gin.Context) {

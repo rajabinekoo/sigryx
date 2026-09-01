@@ -986,6 +986,7 @@ type WalletMutation struct {
 	op              Op
 	typ             string
 	id              *string
+	user_id         *string
 	adapter         *string
 	derivation_path *string
 	public_key      *[]byte
@@ -1136,6 +1137,42 @@ func (m *WalletMutation) OldKeyRootID(ctx context.Context) (v string, err error)
 // ResetKeyRootID resets all changes to the "key_root_id" field.
 func (m *WalletMutation) ResetKeyRootID() {
 	m.key_root = nil
+}
+
+// SetUserID sets the "user_id" field.
+func (m *WalletMutation) SetUserID(s string) {
+	m.user_id = &s
+}
+
+// UserID returns the value of the "user_id" field in the mutation.
+func (m *WalletMutation) UserID() (r string, exists bool) {
+	v := m.user_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUserID returns the old "user_id" field's value of the Wallet entity.
+// If the Wallet object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WalletMutation) OldUserID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUserID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUserID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUserID: %w", err)
+	}
+	return oldValue.UserID, nil
+}
+
+// ResetUserID resets all changes to the "user_id" field.
+func (m *WalletMutation) ResetUserID() {
+	m.user_id = nil
 }
 
 // SetAdapter sets the "adapter" field.
@@ -1343,9 +1380,12 @@ func (m *WalletMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *WalletMutation) Fields() []string {
-	fields := make([]string, 0, 5)
+	fields := make([]string, 0, 6)
 	if m.key_root != nil {
 		fields = append(fields, wallet.FieldKeyRootID)
+	}
+	if m.user_id != nil {
+		fields = append(fields, wallet.FieldUserID)
 	}
 	if m.adapter != nil {
 		fields = append(fields, wallet.FieldAdapter)
@@ -1369,6 +1409,8 @@ func (m *WalletMutation) Field(name string) (ent.Value, bool) {
 	switch name {
 	case wallet.FieldKeyRootID:
 		return m.KeyRootID()
+	case wallet.FieldUserID:
+		return m.UserID()
 	case wallet.FieldAdapter:
 		return m.Adapter()
 	case wallet.FieldDerivationPath:
@@ -1388,6 +1430,8 @@ func (m *WalletMutation) OldField(ctx context.Context, name string) (ent.Value, 
 	switch name {
 	case wallet.FieldKeyRootID:
 		return m.OldKeyRootID(ctx)
+	case wallet.FieldUserID:
+		return m.OldUserID(ctx)
 	case wallet.FieldAdapter:
 		return m.OldAdapter(ctx)
 	case wallet.FieldDerivationPath:
@@ -1411,6 +1455,13 @@ func (m *WalletMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetKeyRootID(v)
+		return nil
+	case wallet.FieldUserID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUserID(v)
 		return nil
 	case wallet.FieldAdapter:
 		v, ok := value.(string)
@@ -1491,6 +1542,9 @@ func (m *WalletMutation) ResetField(name string) error {
 	switch name {
 	case wallet.FieldKeyRootID:
 		m.ResetKeyRootID()
+		return nil
+	case wallet.FieldUserID:
+		m.ResetUserID()
 		return nil
 	case wallet.FieldAdapter:
 		m.ResetAdapter()

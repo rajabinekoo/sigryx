@@ -16,11 +16,16 @@ type CreateKeyRootResult struct {
 	DerivationScheme domain.DerivationScheme
 }
 
+type KeyRootResult struct {
+	ID               string                  `json:"id"`
+	DerivationScheme domain.DerivationScheme `json:"derivation_scheme"`
+}
+
 type KeyRootUseCase interface {
 	Create(
 		ctx context.Context,
 		input CreateKeyRootInput,
 	) (*CreateKeyRootResult, error)
 
-	GetAll(ctx context.Context) ([]*CreateKeyRootResult, error)
+	GetAll(ctx context.Context) ([]KeyRootResult, error)
 }

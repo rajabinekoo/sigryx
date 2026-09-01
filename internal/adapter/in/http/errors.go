@@ -18,6 +18,9 @@ func translate(err error) error {
 	switch {
 	case errors.Is(err, service.ErrInvalidUnsealKeyCount),
 		errors.Is(err, service.ErrUnsupportedWalletType),
+		errors.Is(err, service.ErrInvalidWalletUserID),
+		errors.Is(err, service.ErrInvalidKeyRootID),
+		errors.Is(err, service.ErrWalletSchemeMismatch),
 		errors.Is(err, secretstore.ErrInvalidUnsealSlot),
 		errors.Is(err, secretstore.ErrInvalidUnsealKeySize):
 		return huma.Error400BadRequest(err.Error())
@@ -27,12 +30,18 @@ func translate(err error) error {
 
 	case errors.Is(err, portout.ErrAlreadyInitialized),
 		errors.Is(err, portout.ErrKeyRootAlreadyExists),
+		errors.Is(err, portout.ErrWalletAlreadyExists),
+		errors.Is(err, portout.ErrDerivationIndexExhausted),
 		errors.Is(err, service.ErrNotInitialized),
 		errors.Is(err, secretstore.ErrVaultSealed),
 		errors.Is(err, secretstore.ErrDuplicateUnsealSlot),
 		errors.Is(err, secretstore.ErrVaultAlreadyUnsealed),
 		errors.Is(err, secretstore.ErrUnsealConfigurationLocked):
 		return huma.Error409Conflict(err.Error())
+
+	case errors.Is(err, portout.ErrKeyRootNotFound),
+		errors.Is(err, portout.ErrWalletNotFound):
+		return huma.Error404NotFound(err.Error())
 
 	case errors.Is(err, service.ErrCorruptedUnsealSlot):
 		return huma.Error500InternalServerError("internal error")

@@ -30,6 +30,13 @@ func (Wallet) Fields() []ent.Field {
 			}).
 			Immutable(),
 
+		// External user identifier supplied by the API consumer.
+		// Together with key_root_id and adapter it is the idempotency key
+		// for deterministic wallet allocation.
+		field.String("user_id").
+			NotEmpty().
+			Immutable(),
+
 		// Blockchain adapter that defines derivation/address semantics.
 		//
 		// Examples:
@@ -73,6 +80,13 @@ func (Wallet) Edges() []ent.Edge {
 
 func (Wallet) Indexes() []ent.Index {
 	return []ent.Index{
+		index.Fields(
+			"key_root_id",
+			"adapter",
+			"user_id",
+		).
+			Unique(),
+
 		index.Fields(
 			"key_root_id",
 			"adapter",

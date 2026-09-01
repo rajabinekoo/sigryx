@@ -14,6 +14,8 @@ const (
 	FieldID = "id"
 	// FieldKeyRootID holds the string denoting the key_root_id field in the database.
 	FieldKeyRootID = "key_root_id"
+	// FieldUserID holds the string denoting the user_id field in the database.
+	FieldUserID = "user_id"
 	// FieldAdapter holds the string denoting the adapter field in the database.
 	FieldAdapter = "adapter"
 	// FieldDerivationPath holds the string denoting the derivation_path field in the database.
@@ -39,6 +41,7 @@ const (
 var Columns = []string{
 	FieldID,
 	FieldKeyRootID,
+	FieldUserID,
 	FieldAdapter,
 	FieldDerivationPath,
 	FieldPublicKey,
@@ -56,6 +59,8 @@ func ValidColumn(column string) bool {
 }
 
 var (
+	// UserIDValidator is a validator for the "user_id" field. It is called by the builders before save.
+	UserIDValidator func(string) error
 	// AdapterValidator is a validator for the "adapter" field. It is called by the builders before save.
 	AdapterValidator func(string) error
 	// DerivationPathValidator is a validator for the "derivation_path" field. It is called by the builders before save.
@@ -75,6 +80,11 @@ func ByID(opts ...sql.OrderTermOption) OrderOption {
 // ByKeyRootID orders the results by the key_root_id field.
 func ByKeyRootID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldKeyRootID, opts...).ToFunc()
+}
+
+// ByUserID orders the results by the user_id field.
+func ByUserID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUserID, opts...).ToFunc()
 }
 
 // ByAdapter orders the results by the adapter field.

@@ -28,16 +28,20 @@ func init() {
 	unsealkeyslot.IDValidator = unsealkeyslotDescID.Validators[0].(func(int) error)
 	walletFields := schema.Wallet{}.Fields()
 	_ = walletFields
+	// walletDescUserID is the schema descriptor for user_id field.
+	walletDescUserID := walletFields[2].Descriptor()
+	// wallet.UserIDValidator is a validator for the "user_id" field. It is called by the builders before save.
+	wallet.UserIDValidator = walletDescUserID.Validators[0].(func(string) error)
 	// walletDescAdapter is the schema descriptor for adapter field.
-	walletDescAdapter := walletFields[2].Descriptor()
+	walletDescAdapter := walletFields[3].Descriptor()
 	// wallet.AdapterValidator is a validator for the "adapter" field. It is called by the builders before save.
 	wallet.AdapterValidator = walletDescAdapter.Validators[0].(func(string) error)
 	// walletDescDerivationPath is the schema descriptor for derivation_path field.
-	walletDescDerivationPath := walletFields[3].Descriptor()
+	walletDescDerivationPath := walletFields[4].Descriptor()
 	// wallet.DerivationPathValidator is a validator for the "derivation_path" field. It is called by the builders before save.
 	wallet.DerivationPathValidator = walletDescDerivationPath.Validators[0].(func(string) error)
 	// walletDescAddress is the schema descriptor for address field.
-	walletDescAddress := walletFields[5].Descriptor()
+	walletDescAddress := walletFields[6].Descriptor()
 	// wallet.AddressValidator is a validator for the "address" field. It is called by the builders before save.
 	wallet.AddressValidator = walletDescAddress.Validators[0].(func(string) error)
 	walletcounterFields := schema.WalletCounter{}.Fields()

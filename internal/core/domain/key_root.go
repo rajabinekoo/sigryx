@@ -1,10 +1,7 @@
 package domain
 
-// WalletType is the wallet profile requested by an API consumer.
-//
-// It is not persisted on KeyRoot. A wallet type only selects the cryptographic
-// derivation scheme required to create the root. Blockchain-specific behavior
-// remains an adapter concern.
+// WalletType is the blockchain wallet profile requested by an API consumer.
+// It is not persisted on KeyRoot; KeyRoot remains blockchain-agnostic.
 type WalletType string
 
 const (
@@ -12,7 +9,6 @@ const (
 )
 
 // DerivationScheme describes how child private keys are derived from a KeyRoot.
-// It intentionally contains no blockchain identity.
 type DerivationScheme string
 
 const (
@@ -23,15 +19,6 @@ func (w WalletType) DerivationScheme() (DerivationScheme, bool) {
 	switch w {
 	case WalletTypeEthereum:
 		return DerivationSchemeBIP32Secp256k1, true
-	default:
-		return "", false
-	}
-}
-
-func (w DerivationScheme) WalletType() (WalletType, bool) {
-	switch w {
-	case DerivationSchemeBIP32Secp256k1:
-		return WalletTypeEthereum, true
 	default:
 		return "", false
 	}

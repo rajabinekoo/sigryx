@@ -43,6 +43,7 @@ var (
 	// WalletsColumns holds the columns for the "wallets" table.
 	WalletsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeString, SchemaType: map[string]string{"postgres": "uuid"}},
+		{Name: "user_id", Type: field.TypeString},
 		{Name: "adapter", Type: field.TypeString},
 		{Name: "derivation_path", Type: field.TypeString},
 		{Name: "public_key", Type: field.TypeBytes},
@@ -57,21 +58,26 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "wallets_key_roots_wallets",
-				Columns:    []*schema.Column{WalletsColumns[5]},
+				Columns:    []*schema.Column{WalletsColumns[6]},
 				RefColumns: []*schema.Column{KeyRootsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 		},
 		Indexes: []*schema.Index{
 			{
+				Name:    "wallet_key_root_id_adapter_user_id",
+				Unique:  true,
+				Columns: []*schema.Column{WalletsColumns[6], WalletsColumns[2], WalletsColumns[1]},
+			},
+			{
 				Name:    "wallet_key_root_id_adapter_derivation_path",
 				Unique:  true,
-				Columns: []*schema.Column{WalletsColumns[5], WalletsColumns[1], WalletsColumns[2]},
+				Columns: []*schema.Column{WalletsColumns[6], WalletsColumns[2], WalletsColumns[3]},
 			},
 			{
 				Name:    "wallet_adapter_address",
 				Unique:  true,
-				Columns: []*schema.Column{WalletsColumns[1], WalletsColumns[4]},
+				Columns: []*schema.Column{WalletsColumns[2], WalletsColumns[5]},
 			},
 		},
 	}
