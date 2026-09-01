@@ -2,7 +2,10 @@ module github.com/rajabinekoo/sigryx
 
 go 1.26.5
 
-require entgo.io/ent v0.14.6
+require (
+	entgo.io/ent v0.14.6
+	golang.org/x/sys v0.30.0
+)
 
 require (
 	ariga.io/atlas v0.36.2-0.20250730182955-2c6300d0a3e1 // indirect
@@ -17,7 +20,7 @@ require (
 	github.com/rogpeppe/go-internal v1.16.0 // indirect
 	github.com/zclconf/go-cty v1.14.4 // indirect
 	github.com/zclconf/go-cty-yaml v1.1.0 // indirect
-	golang.org/x/mod v0.24.0 // indirect
-	golang.org/x/text v0.21.0 // indirect
+	golang.org/x/mod v0.26.0 // indirect
+	golang.org/x/text v0.28.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
