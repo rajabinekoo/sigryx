@@ -31,25 +31,16 @@ func NewKeyRootService(
 	}
 }
 
-func (s *KeyRootService) GetAll(ctx context.Context) ([]*portin.CreateKeyRootResult, error) {
-	if !s.secrets.IsUnsealed() {
-		return nil, secretstore.ErrVaultSealed
-	}
-
+func (s *KeyRootService) GetAll(ctx context.Context) ([]portin.KeyRootResult, error) {
 	list, err := s.repository.GetAll(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	result := make([]*portin.CreateKeyRootResult, len(list))
+	result := make([]portin.KeyRootResult, len(list))
 	for i, item := range list {
-		walletType, ok := item.DerivationScheme.WalletType()
-		if !ok {
-			return nil, ErrUnsupportedWalletType
-		}
-		result[i] = &portin.CreateKeyRootResult{
+		result[i] = portin.KeyRootResult{
 			ID:               item.ID,
-			WalletType:       walletType,
 			DerivationScheme: item.DerivationScheme,
 		}
 	}

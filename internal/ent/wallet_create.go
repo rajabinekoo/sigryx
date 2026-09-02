@@ -29,6 +29,12 @@ func (_c *WalletCreate) SetKeyRootID(v string) *WalletCreate {
 	return _c
 }
 
+// SetUserID sets the "user_id" field.
+func (_c *WalletCreate) SetUserID(v string) *WalletCreate {
+	_c.mutation.SetUserID(v)
+	return _c
+}
+
 // SetAdapter sets the "adapter" field.
 func (_c *WalletCreate) SetAdapter(v string) *WalletCreate {
 	_c.mutation.SetAdapter(v)
@@ -101,6 +107,14 @@ func (_c *WalletCreate) check() error {
 	if _, ok := _c.mutation.KeyRootID(); !ok {
 		return &ValidationError{Name: "key_root_id", err: errors.New(`ent: missing required field "Wallet.key_root_id"`)}
 	}
+	if _, ok := _c.mutation.UserID(); !ok {
+		return &ValidationError{Name: "user_id", err: errors.New(`ent: missing required field "Wallet.user_id"`)}
+	}
+	if v, ok := _c.mutation.UserID(); ok {
+		if err := wallet.UserIDValidator(v); err != nil {
+			return &ValidationError{Name: "user_id", err: fmt.Errorf(`ent: validator failed for field "Wallet.user_id": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.Adapter(); !ok {
 		return &ValidationError{Name: "adapter", err: errors.New(`ent: missing required field "Wallet.adapter"`)}
 	}
@@ -166,6 +180,10 @@ func (_c *WalletCreate) createSpec() (*Wallet, *sqlgraph.CreateSpec) {
 	if id, ok := _c.mutation.ID(); ok {
 		_node.ID = id
 		_spec.ID.Value = id
+	}
+	if value, ok := _c.mutation.UserID(); ok {
+		_spec.SetField(wallet.FieldUserID, field.TypeString, value)
+		_node.UserID = value
 	}
 	if value, ok := _c.mutation.Adapter(); ok {
 		_spec.SetField(wallet.FieldAdapter, field.TypeString, value)
@@ -271,6 +289,9 @@ func (u *WalletUpsertOne) UpdateNewValues() *WalletUpsertOne {
 		}
 		if _, exists := u.create.mutation.KeyRootID(); exists {
 			s.SetIgnore(wallet.FieldKeyRootID)
+		}
+		if _, exists := u.create.mutation.UserID(); exists {
+			s.SetIgnore(wallet.FieldUserID)
 		}
 		if _, exists := u.create.mutation.Adapter(); exists {
 			s.SetIgnore(wallet.FieldAdapter)
@@ -499,6 +520,9 @@ func (u *WalletUpsertBulk) UpdateNewValues() *WalletUpsertBulk {
 			}
 			if _, exists := b.mutation.KeyRootID(); exists {
 				s.SetIgnore(wallet.FieldKeyRootID)
+			}
+			if _, exists := b.mutation.UserID(); exists {
+				s.SetIgnore(wallet.FieldUserID)
 			}
 			if _, exists := b.mutation.Adapter(); exists {
 				s.SetIgnore(wallet.FieldAdapter)

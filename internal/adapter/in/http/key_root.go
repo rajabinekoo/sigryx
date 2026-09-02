@@ -25,7 +25,7 @@ type createKeyRootOutput struct {
 
 type getListOfKeyRootsOutput struct {
 	Body struct {
-		KeyRoots []*portin.CreateKeyRootResult `json:"key_roots"`
+		KeyRoots []portin.KeyRootResult `json:"key_roots"`
 	}
 }
 
@@ -56,8 +56,8 @@ func registerKeyRootRoutes(api huma.API, keyRoots portin.KeyRootUseCase) {
 		OperationID: "get_key_roots",
 		Method:      http.MethodGet,
 		Path:        "/v1/key-roots",
-		Summary:     "Fetch list of HD keys root",
-		Description: "Fetch all of root keys that have created.",
+		Summary:     "List HD key roots",
+		Description: "Lists persisted HD key roots. This endpoint returns public metadata and works while the vault is sealed.",
 		Tags:        []string{"hd-wallet"},
 	}, func(ctx context.Context, in *emptyInput) (*getListOfKeyRootsOutput, error) {
 		result, err := keyRoots.GetAll(ctx)

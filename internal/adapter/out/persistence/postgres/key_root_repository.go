@@ -7,6 +7,7 @@ import (
 	"github.com/rajabinekoo/sigryx/internal/core/domain"
 	portout "github.com/rajabinekoo/sigryx/internal/core/port/out"
 	"github.com/rajabinekoo/sigryx/internal/ent"
+	"github.com/rajabinekoo/sigryx/internal/ent/keyroot"
 )
 
 type KeyRootRepository struct {
@@ -17,8 +18,31 @@ func NewKeyRootRepository(client *ent.Client) *KeyRootRepository {
 	return &KeyRootRepository{client: client}
 }
 
+func (r *KeyRootRepository) GetByID(
+	ctx context.Context,
+	id string,
+) (*domain.KeyRoot, error) {
+	item, err := r.client.KeyRoot.Query().
+		Where(keyroot.IDEQ(id)).
+		Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, portout.ErrKeyRootNotFound
+		}
+		return nil, fmt.Errorf("get key root: %w", err)
+	}
+
+	return &domain.KeyRoot{
+		ID:               item.ID,
+		DerivationScheme: domain.DerivationScheme(item.DerivationScheme),
+		SealedSeed:       item.SealedSeed,
+	}, nil
+}
+
 func (r *KeyRootRepository) GetAll(ctx context.Context) ([]*domain.KeyRoot, error) {
-	list, err := r.client.KeyRoot.Query().All(ctx)
+	list, err := r.client.KeyRoot.Query().
+		Select(keyroot.FieldID, keyroot.FieldDerivationScheme).
+		All(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -27,7 +51,6 @@ func (r *KeyRootRepository) GetAll(ctx context.Context) ([]*domain.KeyRoot, erro
 	for i, k := range list {
 		result[i] = &domain.KeyRoot{
 			ID:               k.ID,
-			SealedSeed:       k.SealedSeed,
 			DerivationScheme: domain.DerivationScheme(k.DerivationScheme),
 		}
 	}

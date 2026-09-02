@@ -85,9 +85,8 @@ type fakeKeyRootUseCase struct {
 	err    error
 }
 
-func (f *fakeKeyRootUseCase) GetAll(ctx context.Context) ([]*portin.CreateKeyRootResult, error) {
-	//TODO implement me
-	panic("implement me")
+func (f *fakeKeyRootUseCase) GetAll(context.Context) ([]portin.KeyRootResult, error) {
+	return nil, f.err
 }
 
 func (f *fakeKeyRootUseCase) Create(

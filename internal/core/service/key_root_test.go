@@ -8,6 +8,7 @@ import (
 
 	"github.com/rajabinekoo/sigryx/internal/core/domain"
 	portin "github.com/rajabinekoo/sigryx/internal/core/port/in"
+	portout "github.com/rajabinekoo/sigryx/internal/core/port/out"
 	"github.com/rajabinekoo/sigryx/pkg/cryptox"
 	"github.com/rajabinekoo/sigryx/pkg/hdseed"
 	"github.com/rajabinekoo/sigryx/pkg/idgen"
@@ -147,6 +148,27 @@ func TestKeyRootServiceRemovesRuntimeSeedWhenPersistenceFails(t *testing.T) {
 	}
 }
 
+func TestKeyRootServiceListsRootsWhileVaultIsSealed(t *testing.T) {
+	repo := &memoryKeyRootRepository{list: []*domain.KeyRoot{
+		{ID: "root-1", DerivationScheme: domain.DerivationSchemeBIP32Secp256k1},
+	}}
+	svc := NewKeyRootService(repo, secretstore.New())
+
+	result, err := svc.GetAll(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result) != 1 {
+		t.Fatalf("root count = %d, want 1", len(result))
+	}
+	if result[0].ID != "root-1" {
+		t.Fatalf("root ID = %q, want root-1", result[0].ID)
+	}
+	if result[0].DerivationScheme != domain.DerivationSchemeBIP32Secp256k1 {
+		t.Fatalf("unexpected derivation scheme: %q", result[0].DerivationScheme)
+	}
+}
+
 func newUnsealedSecretStore(t *testing.T) *secretstore.Store {
 	t.Helper()
 
@@ -174,12 +196,21 @@ func newUnsealedSecretStore(t *testing.T) *secretstore.Store {
 
 type memoryKeyRootRepository struct {
 	root *domain.KeyRoot
+	list []*domain.KeyRoot
 	err  error
 }
 
-func (r *memoryKeyRootRepository) GetAll(ctx context.Context) ([]*domain.KeyRoot, error) {
-	//TODO implement me
-	panic("implement me")
+func (r *memoryKeyRootRepository) GetByID(_ context.Context, id string) (*domain.KeyRoot, error) {
+	if r.root == nil || r.root.ID != id {
+		return nil, portout.ErrKeyRootNotFound
+	}
+	copyRoot := *r.root
+	copyRoot.SealedSeed = bytes.Clone(r.root.SealedSeed)
+	return &copyRoot, nil
+}
+
+func (r *memoryKeyRootRepository) GetAll(context.Context) ([]*domain.KeyRoot, error) {
+	return r.list, r.err
 }
 
 func (r *memoryKeyRootRepository) Create(

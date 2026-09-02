@@ -19,6 +19,8 @@ type Wallet struct {
 	ID string `json:"id,omitempty"`
 	// KeyRootID holds the value of the "key_root_id" field.
 	KeyRootID string `json:"key_root_id,omitempty"`
+	// UserID holds the value of the "user_id" field.
+	UserID string `json:"user_id,omitempty"`
 	// Adapter holds the value of the "adapter" field.
 	Adapter string `json:"adapter,omitempty"`
 	// DerivationPath holds the value of the "derivation_path" field.
@@ -60,7 +62,7 @@ func (*Wallet) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case wallet.FieldPublicKey:
 			values[i] = new([]byte)
-		case wallet.FieldID, wallet.FieldKeyRootID, wallet.FieldAdapter, wallet.FieldDerivationPath, wallet.FieldAddress:
+		case wallet.FieldID, wallet.FieldKeyRootID, wallet.FieldUserID, wallet.FieldAdapter, wallet.FieldDerivationPath, wallet.FieldAddress:
 			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -88,6 +90,12 @@ func (_m *Wallet) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field key_root_id", values[i])
 			} else if value.Valid {
 				_m.KeyRootID = value.String
+			}
+		case wallet.FieldUserID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field user_id", values[i])
+			} else if value.Valid {
+				_m.UserID = value.String
 			}
 		case wallet.FieldAdapter:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -156,6 +164,9 @@ func (_m *Wallet) String() string {
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
 	builder.WriteString("key_root_id=")
 	builder.WriteString(_m.KeyRootID)
+	builder.WriteString(", ")
+	builder.WriteString("user_id=")
+	builder.WriteString(_m.UserID)
 	builder.WriteString(", ")
 	builder.WriteString("adapter=")
 	builder.WriteString(_m.Adapter)
