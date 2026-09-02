@@ -8,6 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strconv"
+	"strings"
 )
 
 const hardenedOffset uint32 = 1 << 31
@@ -51,6 +53,36 @@ func BIP44(coinType, account, change, index uint32) (Path, error) {
 
 func (p Path) Segments() []Segment {
 	return append([]Segment(nil), p.segments...)
+}
+
+func ParsePath(value string) (Path, error) {
+	if value == "m" {
+		return Path{}, nil
+	}
+	if !strings.HasPrefix(value, "m/") {
+		return Path{}, ErrInvalidPath
+	}
+
+	parts := strings.Split(value[2:], "/")
+	segments := make([]Segment, 0, len(parts))
+	for _, part := range parts {
+		if part == "" {
+			return Path{}, ErrInvalidPath
+		}
+
+		hardened := strings.HasSuffix(part, "'")
+		if hardened {
+			part = strings.TrimSuffix(part, "'")
+		}
+
+		index, err := strconv.ParseUint(part, 10, 31)
+		if err != nil {
+			return Path{}, ErrInvalidPath
+		}
+		segments = append(segments, Segment{Index: uint32(index), Hardened: hardened})
+	}
+
+	return NewPath(segments...)
 }
 
 func (p Path) String() string {

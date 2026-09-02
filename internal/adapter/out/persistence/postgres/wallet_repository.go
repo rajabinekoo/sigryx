@@ -21,6 +21,36 @@ func NewWalletRepository(pool *pgxpool.Pool) *WalletRepository {
 	return &WalletRepository{pool: pool}
 }
 
+func (r *WalletRepository) GetByID(
+	ctx context.Context,
+	id string,
+) (*domain.Wallet, error) {
+	const query = `
+SELECT id, key_root_id, user_id, adapter, derivation_path, public_key, address
+FROM wallets
+WHERE id = $1
+`
+
+	wallet := &domain.Wallet{}
+	err := r.pool.QueryRow(ctx, query, id).Scan(
+		&wallet.ID,
+		&wallet.KeyRootID,
+		&wallet.UserID,
+		&wallet.Adapter,
+		&wallet.DerivationPath,
+		&wallet.PublicKey,
+		&wallet.Address,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, portout.ErrWalletNotFound
+		}
+		return nil, fmt.Errorf("get wallet by id: %w", err)
+	}
+
+	return wallet, nil
+}
+
 func (r *WalletRepository) GetByUser(
 	ctx context.Context,
 	keyRootID string,

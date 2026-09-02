@@ -8,10 +8,8 @@ import (
 	"github.com/rajabinekoo/sigryx/internal/core/domain"
 	portin "github.com/rajabinekoo/sigryx/internal/core/port/in"
 	portout "github.com/rajabinekoo/sigryx/internal/core/port/out"
-	"github.com/rajabinekoo/sigryx/pkg/cryptox"
 	"github.com/rajabinekoo/sigryx/pkg/idgen"
 	"github.com/rajabinekoo/sigryx/pkg/secretstore"
-	"github.com/rajabinekoo/sigryx/pkg/securemem"
 )
 
 var (
@@ -88,7 +86,7 @@ func (s *WalletService) Create(
 	}
 
 	var derived portout.DerivedWallet
-	err = s.withKeyRootSeed(root, func(seed []byte) error {
+	err = withKeyRootSeed(s.secrets, root, func(seed []byte) error {
 		var deriveErr error
 		derived, deriveErr = s.adapter.Derive(seed, index)
 		return deriveErr
@@ -127,46 +125,6 @@ func (s *WalletService) Create(
 	}
 
 	return walletResult(wallet, input.WalletType), nil
-}
-
-func (s *WalletService) withKeyRootSeed(
-	root *domain.KeyRoot,
-	fn func([]byte) error,
-) error {
-	err := s.secrets.WithKeyRootSeed(root.ID, fn)
-	if err == nil {
-		return nil
-	}
-	if !errors.Is(err, secretstore.ErrKeyRootSeedNotFound) {
-		return err
-	}
-
-	var plaintext []byte
-	err = s.secrets.WithVaultEncryptionKey(func(vaultKey []byte) error {
-		var openErr error
-		plaintext, openErr = cryptox.Open(
-			vaultKey,
-			cryptox.SealedPayload(root.SealedSeed),
-			keyRootAAD(root.ID, root.DerivationScheme),
-		)
-		return openErr
-	})
-	if err != nil {
-		return fmt.Errorf("open key root seed: %w", err)
-	}
-
-	seed, err := securemem.New(plaintext)
-	if err != nil {
-		return fmt.Errorf("protect key root seed: %w", err)
-	}
-
-	if err := s.secrets.StoreKeyRootSeed(root.ID, seed); err != nil {
-		if !errors.Is(err, secretstore.ErrKeyRootSeedExists) {
-			return fmt.Errorf("cache key root seed: %w", err)
-		}
-	}
-
-	return s.secrets.WithKeyRootSeed(root.ID, fn)
 }
 
 func walletResult(

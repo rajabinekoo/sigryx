@@ -203,6 +203,18 @@ type memoryWalletRepository struct {
 	conflictWallet *domain.Wallet
 }
 
+func (r *memoryWalletRepository) GetByID(
+	_ context.Context,
+	id string,
+) (*domain.Wallet, error) {
+	if r.wallet == nil || r.wallet.ID != id {
+		return nil, portout.ErrWalletNotFound
+	}
+	copyWallet := *r.wallet
+	copyWallet.PublicKey = bytes.Clone(r.wallet.PublicKey)
+	return &copyWallet, nil
+}
+
 func (r *memoryWalletRepository) GetByUser(
 	_ context.Context,
 	keyRootID string,

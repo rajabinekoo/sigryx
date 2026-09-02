@@ -21,6 +21,15 @@ func translate(err error) error {
 		errors.Is(err, service.ErrInvalidWalletUserID),
 		errors.Is(err, service.ErrInvalidKeyRootID),
 		errors.Is(err, service.ErrWalletSchemeMismatch),
+		errors.Is(err, service.ErrInvalidWalletID),
+		errors.Is(err, service.ErrSigningAdapterMismatch),
+		errors.Is(err, service.ErrInvalidDataFormat),
+		errors.Is(err, service.ErrSigningContextRequired),
+		errors.Is(err, service.ErrEmptySigningPayload),
+		errors.Is(err, service.ErrInvalidJSONPayload),
+		errors.Is(err, portout.ErrInvalidTransaction),
+		errors.Is(err, portout.ErrInvalidTypedData),
+		errors.Is(err, portout.ErrInvalidSignature),
 		errors.Is(err, secretstore.ErrInvalidUnsealSlot),
 		errors.Is(err, secretstore.ErrInvalidUnsealKeySize):
 		return huma.Error400BadRequest(err.Error())

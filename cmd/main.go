@@ -106,11 +106,20 @@ func run() error {
 		secrets,
 	)
 
+	ethereumAdapter := ethereum.New()
+
 	walletService := service.NewWalletService(
 		walletRepository,
 		keyRootRepository,
 		secrets,
-		ethereum.New(),
+		ethereumAdapter,
+	)
+
+	signingService := service.NewSigningService(
+		walletRepository,
+		keyRootRepository,
+		secrets,
+		ethereumAdapter,
 	)
 
 	// ---- inbound HTTP adapter ----
@@ -118,6 +127,7 @@ func run() error {
 		Seal:     sealService,
 		KeyRoots: keyRootService,
 		Wallets:  walletService,
+		Signing:  signingService,
 	})
 
 	httpSrv := pkghttp.New(pkghttp.Config{

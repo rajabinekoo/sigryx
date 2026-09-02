@@ -14,6 +14,8 @@ var (
 )
 
 type WalletRepository interface {
+	GetByID(ctx context.Context, id string) (*domain.Wallet, error)
+
 	GetByUser(
 		ctx context.Context,
 		keyRootID string,
