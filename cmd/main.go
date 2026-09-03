@@ -138,6 +138,11 @@ func run() error {
 		ethereumAdapter,
 	)
 
+	recoveryService := service.NewRecoveryService(
+		keyRootRepository,
+		secrets,
+	)
+
 	// ---- inbound HTTP adapter ----
 	httpHandler := httpadapter.New(httpadapter.Deps{
 		Auth:              authService,
@@ -146,6 +151,7 @@ func run() error {
 		KeyRoots:          keyRootService,
 		Wallets:           walletService,
 		Signing:           signingService,
+		Recovery:          recoveryService,
 		TrustedProxyCIDRs: splitCSV(cfg.TrustedProxyCIDRs),
 	})
 

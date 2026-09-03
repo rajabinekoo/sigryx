@@ -45,7 +45,9 @@ func authMiddleware(auth portin.AuthUseCase, trustedProxyCIDRs []string) gin.Han
 			path = c.Request.URL.Path
 		}
 		permission, configured := permissionFor(c.Request.Method, path)
-		if !configured && !isAuthenticatedOnlyRoute(c.Request.Method, path) {
+		authenticatedOnly := isAuthenticatedOnlyRoute(c.Request.Method, path)
+		rootOnly := isRootOnlyRoute(c.Request.Method, path)
+		if !configured && !authenticatedOnly && !rootOnly {
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "authorization policy is not configured for this route"})
 			return
 		}
@@ -57,6 +59,11 @@ func authMiddleware(auth portin.AuthUseCase, trustedProxyCIDRs []string) gin.Han
 				status = http.StatusForbidden
 			}
 			c.AbortWithStatusJSON(status, gin.H{"error": err.Error()})
+			return
+		}
+
+		if rootOnly && !principal.RootAdmin {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "root admin required"})
 			return
 		}
 
@@ -99,6 +106,13 @@ func isAuthenticatedOnlyRoute(method, path string) bool {
 		return true
 	}
 	return method == http.MethodPatch && path == "/v1/auth/me"
+}
+
+func isRootOnlyRoute(method, path string) bool {
+	if method != http.MethodPost {
+		return false
+	}
+	return path == "/v1/recovery/export" || path == "/v1/recovery/import"
 }
 
 var routePermissions = map[string]domain.Permission{

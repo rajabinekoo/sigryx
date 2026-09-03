@@ -7,6 +7,7 @@ import (
 	portout "github.com/rajabinekoo/sigryx/internal/core/port/out"
 	"github.com/rajabinekoo/sigryx/internal/core/service"
 	pkgerrors "github.com/rajabinekoo/sigryx/pkg/errors"
+	"github.com/rajabinekoo/sigryx/pkg/recovery"
 	"github.com/rajabinekoo/sigryx/pkg/secretstore"
 )
 
@@ -38,7 +39,11 @@ func translate(err error) error {
 		errors.Is(err, service.ErrInvalidCIDR),
 		errors.Is(err, service.ErrInvalidServiceName),
 		errors.Is(err, service.ErrInvalidAccessID),
-		errors.Is(err, service.ErrInvalidNewPassword):
+		errors.Is(err, service.ErrInvalidNewPassword),
+		errors.Is(err, service.ErrRecoveryInvalidKeyRoot),
+		errors.Is(err, recovery.ErrInvalidKey),
+		errors.Is(err, recovery.ErrInvalidBackup),
+		errors.Is(err, recovery.ErrUnsupportedVersion):
 		return huma.Error400BadRequest(err.Error())
 
 	case errors.Is(err, service.ErrInvalidCredential):
@@ -57,7 +62,8 @@ func translate(err error) error {
 		errors.Is(err, service.ErrInactivePrincipal),
 		errors.Is(err, service.ErrRootAdminImmutable),
 		errors.Is(err, service.ErrUserPrincipalOnly),
-		errors.Is(err, service.ErrRootNetworkOnly):
+		errors.Is(err, service.ErrRootNetworkOnly),
+		errors.Is(err, service.ErrRecoveryRootAdminRequired):
 		return huma.Error403Forbidden(err.Error())
 
 	case errors.Is(err, portout.ErrAlreadyInitialized),
@@ -70,7 +76,9 @@ func translate(err error) error {
 		errors.Is(err, secretstore.ErrVaultAlreadyUnsealed),
 		errors.Is(err, secretstore.ErrUnsealConfigurationLocked),
 		errors.Is(err, service.ErrAlreadySetup),
-		errors.Is(err, portout.ErrAccessAlreadyExists):
+		errors.Is(err, portout.ErrAccessAlreadyExists),
+		errors.Is(err, portout.ErrRecoveryKeyRootConflict),
+		errors.Is(err, service.ErrRecoveryNoKeyRoots):
 		return huma.Error409Conflict(err.Error())
 
 	case errors.Is(err, portout.ErrKeyRootNotFound),

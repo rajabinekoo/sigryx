@@ -15,6 +15,7 @@ type middlewareAuthStub struct {
 	permission domain.Permission
 	clientIP   string
 	token      string
+	principal  domain.Principal
 }
 
 func (s *middlewareAuthStub) Setup(context.Context, portin.SetupInput) (*portin.SetupResult, error) {
@@ -35,6 +36,9 @@ func (s *middlewareAuthStub) Authorize(_ context.Context, token, clientIP string
 	s.token = token
 	s.clientIP = clientIP
 	s.permission = permission
+	if s.principal.ID != "" {
+		return s.principal, nil
+	}
 	return domain.Principal{ID: "user-1", Kind: domain.PrincipalUser}, nil
 }
 
@@ -128,4 +132,47 @@ func TestResolveClientIPWalksTrustedProxyChainFromRight(t *testing.T) {
 	if got != "198.51.100.25" {
 		t.Fatalf("expected nearest untrusted client IP, got %q", got)
 	}
+}
+
+func TestAuthMiddlewareAllowsRecoveryOnlyForRootAdmin(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	t.Run("root admin", func(t *testing.T) {
+		auth := &middlewareAuthStub{principal: domain.Principal{
+			ID: "root-1", Kind: domain.PrincipalUser, RootAdmin: true,
+		}}
+		router := gin.New()
+		router.Use(authMiddleware(auth, nil))
+		router.POST("/v1/recovery/export", func(c *gin.Context) { c.Status(http.StatusNoContent) })
+
+		req := httptest.NewRequest(http.MethodPost, "/v1/recovery/export", nil)
+		req.Header.Set("Authorization", "Bearer abc")
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, req)
+
+		if recorder.Code != http.StatusNoContent {
+			t.Fatalf("expected 204, got %d", recorder.Code)
+		}
+		if auth.permission != "" {
+			t.Fatalf("recovery route must not use an assignable permission, got %q", auth.permission)
+		}
+	})
+
+	t.Run("regular user", func(t *testing.T) {
+		auth := &middlewareAuthStub{principal: domain.Principal{
+			ID: "user-1", Kind: domain.PrincipalUser,
+		}}
+		router := gin.New()
+		router.Use(authMiddleware(auth, nil))
+		router.POST("/v1/recovery/export", func(c *gin.Context) { c.Status(http.StatusNoContent) })
+
+		req := httptest.NewRequest(http.MethodPost, "/v1/recovery/export", nil)
+		req.Header.Set("Authorization", "Bearer abc")
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, req)
+
+		if recorder.Code != http.StatusForbidden {
+			t.Fatalf("expected 403, got %d", recorder.Code)
+		}
+	})
 }

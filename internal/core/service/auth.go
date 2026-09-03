@@ -305,7 +305,7 @@ func (s *AuthService) authorizeUser(ctx context.Context, userID, sessionID, clie
 		return domain.Principal{}, ErrIPNotAllowed
 	}
 	principal := domain.Principal{ID: user.ID, Kind: domain.PrincipalUser, SessionID: session.ID, RootAdmin: user.IsRootAdmin}
-	if user.IsRootAdmin {
+	if user.IsRootAdmin || permission == "" {
 		return principal, nil
 	}
 	role, err := s.repository.GetRoleByID(ctx, user.RoleID)
@@ -327,6 +327,11 @@ func (s *AuthService) authorizeService(ctx context.Context, accountID, clientIP 
 	if !ipAllowed(clientIP, account.AllowedCIDRs) {
 		return domain.Principal{}, ErrIPNotAllowed
 	}
+	principal := domain.Principal{ID: account.ID, Kind: domain.PrincipalService}
+	if permission == "" {
+		return principal, nil
+	}
+
 	role, err := s.repository.GetRoleByID(ctx, account.RoleID)
 	if err != nil {
 		return domain.Principal{}, ErrPermissionDenied
@@ -334,5 +339,6 @@ func (s *AuthService) authorizeService(ctx context.Context, accountID, clientIP 
 	if !hasPermission(role.Permissions, permission) {
 		return domain.Principal{}, ErrPermissionDenied
 	}
-	return domain.Principal{ID: account.ID, Kind: domain.PrincipalService, Permissions: role.Permissions}, nil
+	principal.Permissions = role.Permissions
+	return principal, nil
 }

@@ -208,3 +208,36 @@ func TestDeactivatingUserRevokesExistingSession(t *testing.T) {
 		t.Fatalf("expected deactivated user's session to be revoked, got %v", err)
 	}
 }
+
+func TestAuthorizeWithoutPermissionOnlyAuthenticatesPrincipal(t *testing.T) {
+	ctx := context.Background()
+	repo := newMemoryAccessRepository()
+	access := NewAccessService(repo)
+	auth := newTestAuth(t, repo)
+
+	role, err := access.CreateRole(ctx, portin.CreateRoleInput{
+		Name:        "No Access",
+		Permissions: []domain.Permission{domain.PermissionVaultStatusRead},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	created, err := access.CreateUser(ctx, portin.CreateUserInput{Username: "dave", RoleID: role.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	pair, err := auth.Login(ctx, portin.LoginInput{
+		Username: created.Username, Password: created.Password, ClientIP: "127.0.0.1",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	principal, err := auth.Authorize(ctx, pair.AccessToken, "127.0.0.1", "")
+	if err != nil {
+		t.Fatalf("authenticated-only authorization failed: %v", err)
+	}
+	if principal.ID == "" || principal.RootAdmin {
+		t.Fatalf("unexpected principal: %+v", principal)
+	}
+}
