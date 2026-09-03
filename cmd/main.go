@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	httpadapter "github.com/rajabinekoo/sigryx/internal/adapter/in/http"
@@ -89,12 +90,27 @@ func run() error {
 	unsealKeySlotRepository := postgresadapter.NewUnsealKeySlotRepository(entClient)
 	keyRootRepository := postgresadapter.NewKeyRootRepository(entClient)
 	walletRepository := postgresadapter.NewWalletRepository(pool)
+	accessRepository := postgresadapter.NewAccessRepository(pool)
 
 	// ---- runtime secret ownership ----
 	secrets := secretstore.New()
 	defer secrets.Clear()
 
 	// ---- core services ----
+	authService, err := service.NewAuthService(accessRepository, service.AuthConfig{
+		SetupToken: cfg.SetupToken,
+		JWTSecret:  []byte(cfg.AuthJWTSecret),
+		Issuer:     cfg.AuthIssuer,
+		Audience:   cfg.AuthAudience,
+		AccessTTL:  cfg.AuthAccessTTL,
+		RefreshTTL: cfg.AuthRefreshTTL,
+	})
+	if err != nil {
+		return fmt.Errorf("initialize auth service: %w", err)
+	}
+
+	accessService := service.NewAccessService(accessRepository)
+
 	sealService := service.NewSealService(
 		unsealKeySlotRepository,
 		secrets,
@@ -124,10 +140,13 @@ func run() error {
 
 	// ---- inbound HTTP adapter ----
 	httpHandler := httpadapter.New(httpadapter.Deps{
-		Seal:     sealService,
-		KeyRoots: keyRootService,
-		Wallets:  walletService,
-		Signing:  signingService,
+		Auth:              authService,
+		Access:            accessService,
+		Seal:              sealService,
+		KeyRoots:          keyRootService,
+		Wallets:           walletService,
+		Signing:           signingService,
+		TrustedProxyCIDRs: splitCSV(cfg.TrustedProxyCIDRs),
 	})
 
 	httpSrv := pkghttp.New(pkghttp.Config{
@@ -155,4 +174,18 @@ func run() error {
 
 	log.Info("all services stopped gracefully")
 	return nil
+}
+
+func splitCSV(value string) []string {
+	if strings.TrimSpace(value) == "" {
+		return nil
+	}
+	parts := strings.Split(value, ",")
+	result := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if part = strings.TrimSpace(part); part != "" {
+			result = append(result, part)
+		}
+	}
+	return result
 }

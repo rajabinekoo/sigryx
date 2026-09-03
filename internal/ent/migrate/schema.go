@@ -21,6 +21,76 @@ var (
 		Columns:    KeyRootsColumns,
 		PrimaryKey: []*schema.Column{KeyRootsColumns[0]},
 	}
+	// RolesColumns holds the columns for the "roles" table.
+	RolesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeString, SchemaType: map[string]string{"postgres": "uuid"}},
+		{Name: "name", Type: field.TypeString, Unique: true},
+		{Name: "permissions", Type: field.TypeJSON},
+	}
+	// RolesTable holds the schema information for the "roles" table.
+	RolesTable = &schema.Table{
+		Name:       "roles",
+		Columns:    RolesColumns,
+		PrimaryKey: []*schema.Column{RolesColumns[0]},
+	}
+	// ServiceAccountsColumns holds the columns for the "service_accounts" table.
+	ServiceAccountsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeString, SchemaType: map[string]string{"postgres": "uuid"}},
+		{Name: "name", Type: field.TypeString, Unique: true},
+		{Name: "client_id", Type: field.TypeString, Unique: true},
+		{Name: "client_secret_hash", Type: field.TypeBytes},
+		{Name: "active", Type: field.TypeBool, Default: true},
+		{Name: "allowed_cidrs", Type: field.TypeJSON},
+		{Name: "role_id", Type: field.TypeString, SchemaType: map[string]string{"postgres": "uuid"}},
+	}
+	// ServiceAccountsTable holds the schema information for the "service_accounts" table.
+	ServiceAccountsTable = &schema.Table{
+		Name:       "service_accounts",
+		Columns:    ServiceAccountsColumns,
+		PrimaryKey: []*schema.Column{ServiceAccountsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "service_accounts_roles_service_accounts",
+				Columns:    []*schema.Column{ServiceAccountsColumns[6]},
+				RefColumns: []*schema.Column{RolesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
+	// SessionsColumns holds the columns for the "sessions" table.
+	SessionsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeString, SchemaType: map[string]string{"postgres": "uuid"}},
+		{Name: "refresh_token_hash", Type: field.TypeBytes},
+		{Name: "expires_at", Type: field.TypeTime},
+		{Name: "revoked_at", Type: field.TypeTime, Nullable: true},
+		{Name: "user_id", Type: field.TypeString, SchemaType: map[string]string{"postgres": "uuid"}},
+	}
+	// SessionsTable holds the schema information for the "sessions" table.
+	SessionsTable = &schema.Table{
+		Name:       "sessions",
+		Columns:    SessionsColumns,
+		PrimaryKey: []*schema.Column{SessionsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "sessions_users_sessions",
+				Columns:    []*schema.Column{SessionsColumns[4]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "session_refresh_token_hash",
+				Unique:  true,
+				Columns: []*schema.Column{SessionsColumns[1]},
+			},
+			{
+				Name:    "session_user_id",
+				Unique:  false,
+				Columns: []*schema.Column{SessionsColumns[4]},
+			},
+		},
+	}
 	// UnsealKeySlotsColumns holds the columns for the "unseal_key_slots" table.
 	UnsealKeySlotsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -37,6 +107,40 @@ var (
 				Name:    "unsealkeyslot_wrapped_key",
 				Unique:  true,
 				Columns: []*schema.Column{UnsealKeySlotsColumns[1]},
+			},
+		},
+	}
+	// UsersColumns holds the columns for the "users" table.
+	UsersColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeString, SchemaType: map[string]string{"postgres": "uuid"}},
+		{Name: "username", Type: field.TypeString, Unique: true},
+		{Name: "password_hash", Type: field.TypeString},
+		{Name: "is_root_admin", Type: field.TypeBool, Default: false},
+		{Name: "active", Type: field.TypeBool, Default: true},
+		{Name: "allowed_cidrs", Type: field.TypeJSON},
+		{Name: "role_id", Type: field.TypeString, Nullable: true, SchemaType: map[string]string{"postgres": "uuid"}},
+	}
+	// UsersTable holds the schema information for the "users" table.
+	UsersTable = &schema.Table{
+		Name:       "users",
+		Columns:    UsersColumns,
+		PrimaryKey: []*schema.Column{UsersColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "users_roles_users",
+				Columns:    []*schema.Column{UsersColumns[6]},
+				RefColumns: []*schema.Column{RolesColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "user_is_root_admin",
+				Unique:  true,
+				Columns: []*schema.Column{UsersColumns[3]},
+				Annotation: &entsql.IndexAnnotation{
+					Where: "is_root_admin = true",
+				},
 			},
 		},
 	}
@@ -112,7 +216,11 @@ var (
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		KeyRootsTable,
+		RolesTable,
+		ServiceAccountsTable,
+		SessionsTable,
 		UnsealKeySlotsTable,
+		UsersTable,
 		WalletsTable,
 		WalletCountersTable,
 	}
@@ -123,10 +231,25 @@ func init() {
 	KeyRootsTable.Annotation.Checks = map[string]string{
 		"key_root_sealed_seed_not_empty": "octet_length(sealed_seed) > 0",
 	}
+	ServiceAccountsTable.ForeignKeys[0].RefTable = RolesTable
+	ServiceAccountsTable.Annotation = &entsql.Annotation{}
+	ServiceAccountsTable.Annotation.Checks = map[string]string{
+		"service_account_secret_hash_size": "octet_length(client_secret_hash) = 32",
+	}
+	SessionsTable.ForeignKeys[0].RefTable = UsersTable
+	SessionsTable.Annotation = &entsql.Annotation{}
+	SessionsTable.Annotation.Checks = map[string]string{
+		"session_refresh_token_hash_size": "octet_length(refresh_token_hash) = 32",
+	}
 	UnsealKeySlotsTable.Annotation = &entsql.Annotation{}
 	UnsealKeySlotsTable.Annotation.Checks = map[string]string{
 		"unseal_server_key_material_size": "octet_length(server_key_material) = 32",
 		"unseal_wrapped_key_not_empty":    "octet_length(wrapped_key) > 0",
+	}
+	UsersTable.ForeignKeys[0].RefTable = RolesTable
+	UsersTable.Annotation = &entsql.Annotation{}
+	UsersTable.Annotation.Checks = map[string]string{
+		"user_root_role_consistency": "(is_root_admin = true AND role_id IS NULL) OR (is_root_admin = false AND role_id IS NOT NULL)",
 	}
 	WalletsTable.ForeignKeys[0].RefTable = KeyRootsTable
 	WalletsTable.Annotation = &entsql.Annotation{}

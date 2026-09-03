@@ -11,10 +11,13 @@ import (
 )
 
 type Deps struct {
-	Seal     portin.SealUseCase
-	KeyRoots portin.KeyRootUseCase
-	Wallets  portin.WalletUseCase
-	Signing  portin.SigningUseCase
+	Auth              portin.AuthUseCase
+	Access            portin.AccessUseCase
+	Seal              portin.SealUseCase
+	KeyRoots          portin.KeyRootUseCase
+	Wallets           portin.WalletUseCase
+	Signing           portin.SigningUseCase
+	TrustedProxyCIDRs []string
 }
 
 func New(deps Deps) http.Handler {
@@ -24,6 +27,9 @@ func New(deps Deps) http.Handler {
 
 	engine := gin.New()
 	engine.Use(gin.Recovery())
+	if deps.Auth != nil {
+		engine.Use(authMiddleware(deps.Auth, deps.TrustedProxyCIDRs))
+	}
 
 	config := huma.DefaultConfig("Sigryx API", "v1")
 	config.DocsPath = ""
@@ -31,6 +37,14 @@ func New(deps Deps) http.Handler {
 
 	api := humagin.New(engine, config)
 	registerHealthRoutes(api)
+
+	if deps.Auth != nil {
+		registerAuthRoutes(api, deps.Auth)
+	}
+
+	if deps.Access != nil {
+		registerAccessRoutes(api, deps.Access)
+	}
 
 	if deps.Seal != nil {
 		registerSealRoutes(api, deps.Seal)

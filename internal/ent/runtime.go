@@ -4,8 +4,11 @@ package ent
 
 import (
 	"github.com/rajabinekoo/sigryx/internal/ent/keyroot"
+	"github.com/rajabinekoo/sigryx/internal/ent/role"
 	"github.com/rajabinekoo/sigryx/internal/ent/schema"
+	"github.com/rajabinekoo/sigryx/internal/ent/serviceaccount"
 	"github.com/rajabinekoo/sigryx/internal/ent/unsealkeyslot"
+	"github.com/rajabinekoo/sigryx/internal/ent/user"
 	"github.com/rajabinekoo/sigryx/internal/ent/wallet"
 	"github.com/rajabinekoo/sigryx/internal/ent/walletcounter"
 )
@@ -20,12 +23,62 @@ func init() {
 	keyrootDescDerivationScheme := keyrootFields[1].Descriptor()
 	// keyroot.DerivationSchemeValidator is a validator for the "derivation_scheme" field. It is called by the builders before save.
 	keyroot.DerivationSchemeValidator = keyrootDescDerivationScheme.Validators[0].(func(string) error)
+	roleFields := schema.Role{}.Fields()
+	_ = roleFields
+	// roleDescName is the schema descriptor for name field.
+	roleDescName := roleFields[1].Descriptor()
+	// role.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	role.NameValidator = roleDescName.Validators[0].(func(string) error)
+	// roleDescPermissions is the schema descriptor for permissions field.
+	roleDescPermissions := roleFields[2].Descriptor()
+	// role.DefaultPermissions holds the default value on creation for the permissions field.
+	role.DefaultPermissions = roleDescPermissions.Default.([]string)
+	serviceaccountFields := schema.ServiceAccount{}.Fields()
+	_ = serviceaccountFields
+	// serviceaccountDescName is the schema descriptor for name field.
+	serviceaccountDescName := serviceaccountFields[1].Descriptor()
+	// serviceaccount.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	serviceaccount.NameValidator = serviceaccountDescName.Validators[0].(func(string) error)
+	// serviceaccountDescClientID is the schema descriptor for client_id field.
+	serviceaccountDescClientID := serviceaccountFields[2].Descriptor()
+	// serviceaccount.ClientIDValidator is a validator for the "client_id" field. It is called by the builders before save.
+	serviceaccount.ClientIDValidator = serviceaccountDescClientID.Validators[0].(func(string) error)
+	// serviceaccountDescActive is the schema descriptor for active field.
+	serviceaccountDescActive := serviceaccountFields[4].Descriptor()
+	// serviceaccount.DefaultActive holds the default value on creation for the active field.
+	serviceaccount.DefaultActive = serviceaccountDescActive.Default.(bool)
+	// serviceaccountDescAllowedCidrs is the schema descriptor for allowed_cidrs field.
+	serviceaccountDescAllowedCidrs := serviceaccountFields[6].Descriptor()
+	// serviceaccount.DefaultAllowedCidrs holds the default value on creation for the allowed_cidrs field.
+	serviceaccount.DefaultAllowedCidrs = serviceaccountDescAllowedCidrs.Default.([]string)
 	unsealkeyslotFields := schema.UnsealKeySlot{}.Fields()
 	_ = unsealkeyslotFields
 	// unsealkeyslotDescID is the schema descriptor for id field.
 	unsealkeyslotDescID := unsealkeyslotFields[0].Descriptor()
 	// unsealkeyslot.IDValidator is a validator for the "id" field. It is called by the builders before save.
 	unsealkeyslot.IDValidator = unsealkeyslotDescID.Validators[0].(func(int) error)
+	userFields := schema.User{}.Fields()
+	_ = userFields
+	// userDescUsername is the schema descriptor for username field.
+	userDescUsername := userFields[1].Descriptor()
+	// user.UsernameValidator is a validator for the "username" field. It is called by the builders before save.
+	user.UsernameValidator = userDescUsername.Validators[0].(func(string) error)
+	// userDescPasswordHash is the schema descriptor for password_hash field.
+	userDescPasswordHash := userFields[2].Descriptor()
+	// user.PasswordHashValidator is a validator for the "password_hash" field. It is called by the builders before save.
+	user.PasswordHashValidator = userDescPasswordHash.Validators[0].(func(string) error)
+	// userDescIsRootAdmin is the schema descriptor for is_root_admin field.
+	userDescIsRootAdmin := userFields[3].Descriptor()
+	// user.DefaultIsRootAdmin holds the default value on creation for the is_root_admin field.
+	user.DefaultIsRootAdmin = userDescIsRootAdmin.Default.(bool)
+	// userDescActive is the schema descriptor for active field.
+	userDescActive := userFields[4].Descriptor()
+	// user.DefaultActive holds the default value on creation for the active field.
+	user.DefaultActive = userDescActive.Default.(bool)
+	// userDescAllowedCidrs is the schema descriptor for allowed_cidrs field.
+	userDescAllowedCidrs := userFields[6].Descriptor()
+	// user.DefaultAllowedCidrs holds the default value on creation for the allowed_cidrs field.
+	user.DefaultAllowedCidrs = userDescAllowedCidrs.Default.([]string)
 	walletFields := schema.Wallet{}.Fields()
 	_ = walletFields
 	// walletDescUserID is the schema descriptor for user_id field.

@@ -28,6 +28,15 @@ type Config struct {
 	HTTPIdleTimeout     time.Duration `env:"HTTP_IDLE_TIMEOUT" envDefault:"60s"`
 	HTTPShutdownTimeout time.Duration `env:"HTTP_SHUTDOWN_TIMEOUT" envDefault:"15s"`
 
+	// Authentication
+	SetupToken        string        `env:"SETUP_TOKEN"`
+	AuthJWTSecret     string        `env:"AUTH_JWT_SECRET,required"`
+	AuthIssuer        string        `env:"AUTH_ISSUER" envDefault:"sigryx"`
+	AuthAudience      string        `env:"AUTH_AUDIENCE" envDefault:"sigryx-api"`
+	AuthAccessTTL     time.Duration `env:"AUTH_ACCESS_TTL" envDefault:"10m"`
+	AuthRefreshTTL    time.Duration `env:"AUTH_REFRESH_TTL" envDefault:"168h"`
+	TrustedProxyCIDRs string        `env:"TRUSTED_PROXY_CIDRS"`
+
 	// App Envs
 	MaxUnsealSize int `env:"MAX_UNSEAL_SIZE,required"`
 }

@@ -14,8 +14,16 @@ type Tx struct {
 	config
 	// KeyRoot is the client for interacting with the KeyRoot builders.
 	KeyRoot *KeyRootClient
+	// Role is the client for interacting with the Role builders.
+	Role *RoleClient
+	// ServiceAccount is the client for interacting with the ServiceAccount builders.
+	ServiceAccount *ServiceAccountClient
+	// Session is the client for interacting with the Session builders.
+	Session *SessionClient
 	// UnsealKeySlot is the client for interacting with the UnsealKeySlot builders.
 	UnsealKeySlot *UnsealKeySlotClient
+	// User is the client for interacting with the User builders.
+	User *UserClient
 	// Wallet is the client for interacting with the Wallet builders.
 	Wallet *WalletClient
 	// WalletCounter is the client for interacting with the WalletCounter builders.
@@ -152,7 +160,11 @@ func (tx *Tx) Client() *Client {
 
 func (tx *Tx) init() {
 	tx.KeyRoot = NewKeyRootClient(tx.config)
+	tx.Role = NewRoleClient(tx.config)
+	tx.ServiceAccount = NewServiceAccountClient(tx.config)
+	tx.Session = NewSessionClient(tx.config)
 	tx.UnsealKeySlot = NewUnsealKeySlotClient(tx.config)
+	tx.User = NewUserClient(tx.config)
 	tx.Wallet = NewWalletClient(tx.config)
 	tx.WalletCounter = NewWalletCounterClient(tx.config)
 }
