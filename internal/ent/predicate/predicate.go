@@ -9,8 +9,20 @@ import (
 // KeyRoot is the predicate function for keyroot builders.
 type KeyRoot func(*sql.Selector)
 
+// Role is the predicate function for role builders.
+type Role func(*sql.Selector)
+
+// ServiceAccount is the predicate function for serviceaccount builders.
+type ServiceAccount func(*sql.Selector)
+
+// Session is the predicate function for session builders.
+type Session func(*sql.Selector)
+
 // UnsealKeySlot is the predicate function for unsealkeyslot builders.
 type UnsealKeySlot func(*sql.Selector)
+
+// User is the predicate function for user builders.
+type User func(*sql.Selector)
 
 // Wallet is the predicate function for wallet builders.
 type Wallet func(*sql.Selector)

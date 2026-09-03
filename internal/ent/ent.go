@@ -13,7 +13,11 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/rajabinekoo/sigryx/internal/ent/keyroot"
+	"github.com/rajabinekoo/sigryx/internal/ent/role"
+	"github.com/rajabinekoo/sigryx/internal/ent/serviceaccount"
+	"github.com/rajabinekoo/sigryx/internal/ent/session"
 	"github.com/rajabinekoo/sigryx/internal/ent/unsealkeyslot"
+	"github.com/rajabinekoo/sigryx/internal/ent/user"
 	"github.com/rajabinekoo/sigryx/internal/ent/wallet"
 	"github.com/rajabinekoo/sigryx/internal/ent/walletcounter"
 )
@@ -76,10 +80,14 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			keyroot.Table:       keyroot.ValidColumn,
-			unsealkeyslot.Table: unsealkeyslot.ValidColumn,
-			wallet.Table:        wallet.ValidColumn,
-			walletcounter.Table: walletcounter.ValidColumn,
+			keyroot.Table:        keyroot.ValidColumn,
+			role.Table:           role.ValidColumn,
+			serviceaccount.Table: serviceaccount.ValidColumn,
+			session.Table:        session.ValidColumn,
+			unsealkeyslot.Table:  unsealkeyslot.ValidColumn,
+			user.Table:           user.ValidColumn,
+			wallet.Table:         wallet.ValidColumn,
+			walletcounter.Table:  walletcounter.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

@@ -31,11 +31,34 @@ func translate(err error) error {
 		errors.Is(err, portout.ErrInvalidTypedData),
 		errors.Is(err, portout.ErrInvalidSignature),
 		errors.Is(err, secretstore.ErrInvalidUnsealSlot),
-		errors.Is(err, secretstore.ErrInvalidUnsealKeySize):
+		errors.Is(err, secretstore.ErrInvalidUnsealKeySize),
+		errors.Is(err, service.ErrInvalidUsername),
+		errors.Is(err, service.ErrInvalidRoleName),
+		errors.Is(err, service.ErrInvalidPermission),
+		errors.Is(err, service.ErrInvalidCIDR),
+		errors.Is(err, service.ErrInvalidServiceName),
+		errors.Is(err, service.ErrInvalidAccessID),
+		errors.Is(err, service.ErrInvalidNewPassword):
 		return huma.Error400BadRequest(err.Error())
 
 	case errors.Is(err, service.ErrInvalidCredential):
 		return huma.Error401Unauthorized("invalid unseal credential")
+
+	case errors.Is(err, service.ErrInvalidSetupToken),
+		errors.Is(err, service.ErrInvalidCredentials),
+		errors.Is(err, service.ErrInvalidRefreshToken),
+		errors.Is(err, service.ErrSessionRevoked),
+		errors.Is(err, service.ErrSessionExpired),
+		errors.Is(err, service.ErrCurrentPassword):
+		return huma.Error401Unauthorized(err.Error())
+
+	case errors.Is(err, service.ErrPermissionDenied),
+		errors.Is(err, service.ErrIPNotAllowed),
+		errors.Is(err, service.ErrInactivePrincipal),
+		errors.Is(err, service.ErrRootAdminImmutable),
+		errors.Is(err, service.ErrUserPrincipalOnly),
+		errors.Is(err, service.ErrRootNetworkOnly):
+		return huma.Error403Forbidden(err.Error())
 
 	case errors.Is(err, portout.ErrAlreadyInitialized),
 		errors.Is(err, portout.ErrKeyRootAlreadyExists),
@@ -45,12 +68,21 @@ func translate(err error) error {
 		errors.Is(err, secretstore.ErrVaultSealed),
 		errors.Is(err, secretstore.ErrDuplicateUnsealSlot),
 		errors.Is(err, secretstore.ErrVaultAlreadyUnsealed),
-		errors.Is(err, secretstore.ErrUnsealConfigurationLocked):
+		errors.Is(err, secretstore.ErrUnsealConfigurationLocked),
+		errors.Is(err, service.ErrAlreadySetup),
+		errors.Is(err, portout.ErrAccessAlreadyExists):
 		return huma.Error409Conflict(err.Error())
 
 	case errors.Is(err, portout.ErrKeyRootNotFound),
-		errors.Is(err, portout.ErrWalletNotFound):
+		errors.Is(err, portout.ErrWalletNotFound),
+		errors.Is(err, portout.ErrUserNotFound),
+		errors.Is(err, portout.ErrRoleNotFound),
+		errors.Is(err, portout.ErrServiceAccountNotFound),
+		errors.Is(err, portout.ErrSessionNotFound):
 		return huma.Error404NotFound(err.Error())
+
+	case errors.Is(err, service.ErrSetupDisabled):
+		return huma.Error503ServiceUnavailable(err.Error())
 
 	case errors.Is(err, service.ErrCorruptedUnsealSlot):
 		return huma.Error500InternalServerError("internal error")
