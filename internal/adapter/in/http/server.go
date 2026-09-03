@@ -17,6 +17,7 @@ type Deps struct {
 	KeyRoots          portin.KeyRootUseCase
 	Wallets           portin.WalletUseCase
 	Signing           portin.SigningUseCase
+	Recovery          portin.RecoveryUseCase
 	TrustedProxyCIDRs []string
 }
 
@@ -60,6 +61,10 @@ func New(deps Deps) http.Handler {
 
 	if deps.Signing != nil {
 		registerSigningRoutes(api, deps.Signing)
+	}
+
+	if deps.Recovery != nil {
+		registerRecoveryRoutes(api, deps.Recovery)
 	}
 
 	engine.GET("/docs", func(c *gin.Context) {
