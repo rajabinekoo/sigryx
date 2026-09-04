@@ -83,3 +83,21 @@ build:
 .PHONY: clean
 clean:
 	rm -rf $(BIN_DIR)
+
+
+DOCS_DIR ?= docs
+NPM ?= npm
+
+.PHONY: docs-install docs-dev docs-build
+
+docs-install:
+	cd $(DOCS_DIR) && $(NPM) install
+
+docs-dev:
+	cd $(DOCS_DIR) && $(NPM) run dev
+
+docs-build:
+	cd $(DOCS_DIR) && $(NPM) run build
+
+docs-preview:
+	cd $(DOCS_DIR) && $(NPM) run preview
