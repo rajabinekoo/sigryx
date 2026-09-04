@@ -65,6 +65,37 @@ type VerifyDataInput struct {
 	Signature []byte
 }
 
+type SignIntegrityInput struct {
+	WalletID        string
+	Context         string
+	ObjectID        string
+	Payload         []byte
+	IntegrityFields []string
+}
+
+type SignIntegrityResult struct {
+	Signature []byte
+	Digest    []byte
+	Reused    bool
+}
+
+type VerifyIntegrityInput struct {
+	WalletID        string
+	Context         string
+	ObjectID        string
+	Payload         []byte
+	IntegrityFields []string
+	Signature       []byte
+}
+
+type VerifyIntegrityResult struct {
+	Valid          bool
+	SignatureValid bool
+	RecordMatch    bool
+	Digest         []byte
+	Reason         string
+}
+
 type SigningUseCase interface {
 	SignTransaction(context.Context, SignTransactionInput) (*SignTransactionResult, error)
 	VerifyTransaction(context.Context, VerifyTransactionInput) (*VerifyResult, error)
@@ -72,4 +103,6 @@ type SigningUseCase interface {
 	VerifyTypedData(context.Context, VerifyTypedDataInput) (*VerifyResult, error)
 	SignData(context.Context, SignDataInput) (*SignDataResult, error)
 	VerifyData(context.Context, VerifyDataInput) (*VerifyResult, error)
+	SignIntegrity(context.Context, SignIntegrityInput) (*SignIntegrityResult, error)
+	VerifyIntegrity(context.Context, VerifyIntegrityInput) (*VerifyIntegrityResult, error)
 }

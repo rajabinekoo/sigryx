@@ -9,6 +9,18 @@ import (
 	"github.com/rajabinekoo/sigryx/internal/ent"
 )
 
+// The AuditEventFunc type is an adapter to allow the use of ordinary
+// function as AuditEvent mutator.
+type AuditEventFunc func(context.Context, *ent.AuditEventMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f AuditEventFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.AuditEventMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.AuditEventMutation", m)
+}
+
 // The KeyRootFunc type is an adapter to allow the use of ordinary
 // function as KeyRoot mutator.
 type KeyRootFunc func(context.Context, *ent.KeyRootMutation) (ent.Value, error)
@@ -55,6 +67,18 @@ func (f SessionFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, err
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.SessionMutation", m)
+}
+
+// The SigningRecordFunc type is an adapter to allow the use of ordinary
+// function as SigningRecord mutator.
+type SigningRecordFunc func(context.Context, *ent.SigningRecordMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f SigningRecordFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.SigningRecordMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.SigningRecordMutation", m)
 }
 
 // The UnsealKeySlotFunc type is an adapter to allow the use of ordinary

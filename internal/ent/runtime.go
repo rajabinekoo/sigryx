@@ -3,10 +3,14 @@
 package ent
 
 import (
+	"time"
+
+	"github.com/rajabinekoo/sigryx/internal/ent/auditevent"
 	"github.com/rajabinekoo/sigryx/internal/ent/keyroot"
 	"github.com/rajabinekoo/sigryx/internal/ent/role"
 	"github.com/rajabinekoo/sigryx/internal/ent/schema"
 	"github.com/rajabinekoo/sigryx/internal/ent/serviceaccount"
+	"github.com/rajabinekoo/sigryx/internal/ent/signingrecord"
 	"github.com/rajabinekoo/sigryx/internal/ent/unsealkeyslot"
 	"github.com/rajabinekoo/sigryx/internal/ent/user"
 	"github.com/rajabinekoo/sigryx/internal/ent/wallet"
@@ -17,6 +21,32 @@ import (
 // (default values, validators, hooks and policies) and stitches it
 // to their package variables.
 func init() {
+	auditeventFields := schema.AuditEvent{}.Fields()
+	_ = auditeventFields
+	// auditeventDescOccurredAt is the schema descriptor for occurred_at field.
+	auditeventDescOccurredAt := auditeventFields[1].Descriptor()
+	// auditevent.DefaultOccurredAt holds the default value on creation for the occurred_at field.
+	auditevent.DefaultOccurredAt = auditeventDescOccurredAt.Default.(func() time.Time)
+	// auditeventDescAction is the schema descriptor for action field.
+	auditeventDescAction := auditeventFields[5].Descriptor()
+	// auditevent.ActionValidator is a validator for the "action" field. It is called by the builders before save.
+	auditevent.ActionValidator = auditeventDescAction.Validators[0].(func(string) error)
+	// auditeventDescOutcome is the schema descriptor for outcome field.
+	auditeventDescOutcome := auditeventFields[6].Descriptor()
+	// auditevent.OutcomeValidator is a validator for the "outcome" field. It is called by the builders before save.
+	auditevent.OutcomeValidator = auditeventDescOutcome.Validators[0].(func(string) error)
+	// auditeventDescStatusCode is the schema descriptor for status_code field.
+	auditeventDescStatusCode := auditeventFields[11].Descriptor()
+	// auditevent.DefaultStatusCode holds the default value on creation for the status_code field.
+	auditevent.DefaultStatusCode = auditeventDescStatusCode.Default.(int)
+	// auditeventDescDetails is the schema descriptor for details field.
+	auditeventDescDetails := auditeventFields[12].Descriptor()
+	// auditevent.DefaultDetails holds the default value on creation for the details field.
+	auditevent.DefaultDetails = auditeventDescDetails.Default.(map[string]interface{})
+	// auditeventDescRetentionClass is the schema descriptor for retention_class field.
+	auditeventDescRetentionClass := auditeventFields[13].Descriptor()
+	// auditevent.DefaultRetentionClass holds the default value on creation for the retention_class field.
+	auditevent.DefaultRetentionClass = auditeventDescRetentionClass.Default.(string)
 	keyrootFields := schema.KeyRoot{}.Fields()
 	_ = keyrootFields
 	// keyrootDescDerivationScheme is the schema descriptor for derivation_scheme field.
@@ -51,6 +81,20 @@ func init() {
 	serviceaccountDescAllowedCidrs := serviceaccountFields[6].Descriptor()
 	// serviceaccount.DefaultAllowedCidrs holds the default value on creation for the allowed_cidrs field.
 	serviceaccount.DefaultAllowedCidrs = serviceaccountDescAllowedCidrs.Default.([]string)
+	signingrecordFields := schema.SigningRecord{}.Fields()
+	_ = signingrecordFields
+	// signingrecordDescContext is the schema descriptor for context field.
+	signingrecordDescContext := signingrecordFields[1].Descriptor()
+	// signingrecord.ContextValidator is a validator for the "context" field. It is called by the builders before save.
+	signingrecord.ContextValidator = signingrecordDescContext.Validators[0].(func(string) error)
+	// signingrecordDescObjectID is the schema descriptor for object_id field.
+	signingrecordDescObjectID := signingrecordFields[2].Descriptor()
+	// signingrecord.ObjectIDValidator is a validator for the "object_id" field. It is called by the builders before save.
+	signingrecord.ObjectIDValidator = signingrecordDescObjectID.Validators[0].(func(string) error)
+	// signingrecordDescCreatedAt is the schema descriptor for created_at field.
+	signingrecordDescCreatedAt := signingrecordFields[4].Descriptor()
+	// signingrecord.DefaultCreatedAt holds the default value on creation for the created_at field.
+	signingrecord.DefaultCreatedAt = signingrecordDescCreatedAt.Default.(func() time.Time)
 	unsealkeyslotFields := schema.UnsealKeySlot{}.Fields()
 	_ = unsealkeyslotFields
 	// unsealkeyslotDescID is the schema descriptor for id field.

@@ -8,11 +8,14 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	httpadapter "github.com/rajabinekoo/sigryx/internal/adapter/in/http"
+	alertadapter "github.com/rajabinekoo/sigryx/internal/adapter/out/alert"
 	"github.com/rajabinekoo/sigryx/internal/adapter/out/blockchain/ethereum"
 	postgresadapter "github.com/rajabinekoo/sigryx/internal/adapter/out/persistence/postgres"
 	"github.com/rajabinekoo/sigryx/internal/config"
+	"github.com/rajabinekoo/sigryx/internal/core/domain"
 	"github.com/rajabinekoo/sigryx/internal/core/service"
 	pkgent "github.com/rajabinekoo/sigryx/internal/ent"
 	"github.com/rajabinekoo/sigryx/pkg/entpg"
@@ -91,6 +94,8 @@ func run() error {
 	keyRootRepository := postgresadapter.NewKeyRootRepository(entClient)
 	walletRepository := postgresadapter.NewWalletRepository(pool)
 	accessRepository := postgresadapter.NewAccessRepository(pool)
+	auditRepository := postgresadapter.NewAuditRepository(pool)
+	signingRecordRepository := postgresadapter.NewSigningRecordRepository(pool)
 
 	// ---- runtime secret ownership ----
 	secrets := secretstore.New()
@@ -110,6 +115,19 @@ func run() error {
 	}
 
 	accessService := service.NewAccessService(accessRepository)
+	auditService := service.NewAuditService(auditRepository)
+	auditRetentionService, err := service.NewAuditRetentionService(
+		auditRepository,
+		service.AuditRetentionConfig{
+			NormalRetentionDays:   cfg.AuditNormalRetentionDays,
+			CriticalRetentionDays: cfg.AuditCriticalRetentionDays,
+			CleanupInterval:       cfg.AuditCleanupInterval,
+			BatchSize:             cfg.AuditCleanupBatchSize,
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("initialize audit retention service: %w", err)
+	}
 
 	sealService := service.NewSealService(
 		unsealKeySlotRepository,
@@ -131,11 +149,21 @@ func run() error {
 		ethereumAdapter,
 	)
 
+	alertSink, err := alertadapter.NewWebhook(cfg.AlertWebhookURL, cfg.AlertWebhookTimeout)
+	if err != nil {
+		return fmt.Errorf("initialize alert webhook: %w", err)
+	}
+
 	signingService := service.NewSigningService(
 		walletRepository,
 		keyRootRepository,
 		secrets,
 		ethereumAdapter,
+		service.IntegrityDependencies{
+			Records: signingRecordRepository,
+			Audit:   auditRepository,
+			Alerts:  alertSink,
+		},
 	)
 
 	recoveryService := service.NewRecoveryService(
@@ -152,6 +180,7 @@ func run() error {
 		Wallets:           walletService,
 		Signing:           signingService,
 		Recovery:          recoveryService,
+		Audit:             auditService,
 		TrustedProxyCIDRs: splitCSV(cfg.TrustedProxyCIDRs),
 	})
 
@@ -173,6 +202,61 @@ func run() error {
 		}
 		return nil
 	})
+
+	if auditRetentionService.Enabled() {
+		g.Go(func() error {
+			log.Info(
+				"starting audit retention worker",
+				slog.Int("normal_retention_days", cfg.AuditNormalRetentionDays),
+				slog.Int("critical_retention_days", cfg.AuditCriticalRetentionDays),
+				slog.Duration("cleanup_interval", auditRetentionService.Interval()),
+				slog.Int("batch_size", cfg.AuditCleanupBatchSize),
+			)
+
+			runCleanup := func() {
+				result, cleanupErr := auditRetentionService.Cleanup(gctx)
+				if cleanupErr != nil {
+					if gctx.Err() == nil {
+						log.Error("audit retention cleanup failed", slog.Any("err", cleanupErr))
+					}
+					return
+				}
+				if result.TotalDeleted() > 0 {
+					log.Info(
+						"audit retention cleanup completed",
+						slog.Int("normal_deleted", result.NormalDeleted),
+						slog.Int("critical_deleted", result.CriticalDeleted),
+					)
+					if auditErr := auditService.Record(context.WithoutCancel(gctx), domain.AuditEvent{
+						ActorType:      "SYSTEM",
+						Action:         "audit.retention_cleanup",
+						Outcome:        domain.AuditOutcomeSuccess,
+						RetentionClass: domain.AuditRetentionCritical,
+						Details: map[string]any{
+							"normal_deleted":          result.NormalDeleted,
+							"critical_deleted":        result.CriticalDeleted,
+							"normal_retention_days":   cfg.AuditNormalRetentionDays,
+							"critical_retention_days": cfg.AuditCriticalRetentionDays,
+						},
+					}); auditErr != nil {
+						log.Error("append audit retention event", slog.Any("err", auditErr))
+					}
+				}
+			}
+
+			runCleanup()
+			ticker := time.NewTicker(auditRetentionService.Interval())
+			defer ticker.Stop()
+			for {
+				select {
+				case <-gctx.Done():
+					return nil
+				case <-ticker.C:
+					runCleanup()
+				}
+			}
+		})
+	}
 
 	if err := g.Wait(); err != nil {
 		return err

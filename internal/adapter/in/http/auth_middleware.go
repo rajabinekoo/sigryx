@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/rajabinekoo/sigryx/internal/core/domain"
 	portin "github.com/rajabinekoo/sigryx/internal/core/port/in"
+	"github.com/rajabinekoo/sigryx/internal/core/requestmeta"
 	"github.com/rajabinekoo/sigryx/internal/core/service"
 )
 
@@ -25,9 +26,12 @@ func authMiddleware(auth portin.AuthUseCase, trustedProxyCIDRs []string) gin.Han
 	trusted := parseTrustedPrefixes(trustedProxyCIDRs)
 
 	return func(c *gin.Context) {
-		clientIP := resolveClientIP(c.Request, trusted)
-		ctx := context.WithValue(c.Request.Context(), clientIPContextKey, clientIP)
-		c.Request = c.Request.WithContext(ctx)
+		clientIP := clientIPFromContext(c.Request.Context())
+		if clientIP == "" {
+			clientIP = resolveClientIP(c.Request, trusted)
+			ctx := context.WithValue(c.Request.Context(), clientIPContextKey, clientIP)
+			c.Request = c.Request.WithContext(ctx)
+		}
 
 		if isPublicRoute(c.Request.Method, c.Request.URL.Path) {
 			c.Next()
@@ -53,6 +57,11 @@ func authMiddleware(auth portin.AuthUseCase, trustedProxyCIDRs []string) gin.Han
 		}
 
 		principal, err := auth.Authorize(c.Request.Context(), strings.TrimSpace(strings.TrimPrefix(header, "Bearer ")), clientIP, permission)
+		if principal.ID != "" {
+			metadata := requestmeta.From(c.Request.Context())
+			metadata.Principal = principal
+			c.Request = c.Request.WithContext(requestmeta.With(c.Request.Context(), metadata))
+		}
 		if err != nil {
 			status := http.StatusUnauthorized
 			if errors.Is(err, service.ErrPermissionDenied) || errors.Is(err, service.ErrIPNotAllowed) {
@@ -67,7 +76,10 @@ func authMiddleware(auth portin.AuthUseCase, trustedProxyCIDRs []string) gin.Han
 			return
 		}
 
-		ctx = context.WithValue(c.Request.Context(), principalContextKey, principal)
+		ctx := context.WithValue(c.Request.Context(), principalContextKey, principal)
+		metadata := requestmeta.From(ctx)
+		metadata.Principal = principal
+		ctx = requestmeta.With(ctx, metadata)
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	}
@@ -126,9 +138,12 @@ var routePermissions = map[string]domain.Permission{
 	"POST /v1/sign/transaction":             domain.PermissionSignTransaction,
 	"POST /v1/sign/typed-data":              domain.PermissionSignTypedData,
 	"POST /v1/sign/data":                    domain.PermissionSignGeneric,
+	"POST /v1/sign/integrity":               domain.PermissionSignIntegrity,
 	"POST /v1/verify/transaction":           domain.PermissionVerifyTransaction,
 	"POST /v1/verify/typed-data":            domain.PermissionVerifyTypedData,
 	"POST /v1/verify/data":                  domain.PermissionVerifyGeneric,
+	"POST /v1/verify/integrity":             domain.PermissionVerifyIntegrity,
+	"GET /v1/audit/events":                  domain.PermissionAuditRead,
 	"GET /v1/access/permissions":            domain.PermissionAccessRolesManage,
 	"GET /v1/access/roles":                  domain.PermissionAccessRolesManage,
 	"POST /v1/access/roles":                 domain.PermissionAccessRolesManage,

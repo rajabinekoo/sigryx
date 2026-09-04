@@ -28,6 +28,9 @@ func translate(err error) error {
 		errors.Is(err, service.ErrSigningContextRequired),
 		errors.Is(err, service.ErrEmptySigningPayload),
 		errors.Is(err, service.ErrInvalidJSONPayload),
+		errors.Is(err, service.ErrIntegrityObjectID),
+		errors.Is(err, service.ErrIntegrityFields),
+		errors.Is(err, service.ErrInvalidAuditPagination),
 		errors.Is(err, portout.ErrInvalidTransaction),
 		errors.Is(err, portout.ErrInvalidTypedData),
 		errors.Is(err, portout.ErrInvalidSignature),
@@ -78,7 +81,11 @@ func translate(err error) error {
 		errors.Is(err, service.ErrAlreadySetup),
 		errors.Is(err, portout.ErrAccessAlreadyExists),
 		errors.Is(err, portout.ErrRecoveryKeyRootConflict),
-		errors.Is(err, service.ErrRecoveryNoKeyRoots):
+		errors.Is(err, service.ErrRecoveryNoKeyRoots),
+		errors.Is(err, service.ErrIntegritySchemaMismatch),
+		errors.Is(err, service.ErrIntegrityValueMismatch),
+		errors.Is(err, service.ErrIntegrityWalletMismatch),
+		errors.Is(err, service.ErrSigningRecordTampered):
 		return huma.Error409Conflict(err.Error())
 
 	case errors.Is(err, portout.ErrKeyRootNotFound),
@@ -89,7 +96,8 @@ func translate(err error) error {
 		errors.Is(err, portout.ErrSessionNotFound):
 		return huma.Error404NotFound(err.Error())
 
-	case errors.Is(err, service.ErrSetupDisabled):
+	case errors.Is(err, service.ErrSetupDisabled),
+		errors.Is(err, service.ErrIntegrityUnavailable):
 		return huma.Error503ServiceUnavailable(err.Error())
 
 	case errors.Is(err, service.ErrCorruptedUnsealSlot):

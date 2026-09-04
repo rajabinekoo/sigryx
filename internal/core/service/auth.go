@@ -301,20 +301,20 @@ func (s *AuthService) authorizeUser(ctx context.Context, userID, sessionID, clie
 	if err != nil || !user.Active {
 		return domain.Principal{}, ErrInvalidCredentials
 	}
-	if !ipAllowed(clientIP, user.AllowedCIDRs) {
-		return domain.Principal{}, ErrIPNotAllowed
-	}
 	principal := domain.Principal{ID: user.ID, Kind: domain.PrincipalUser, SessionID: session.ID, RootAdmin: user.IsRootAdmin}
+	if !ipAllowed(clientIP, user.AllowedCIDRs) {
+		return principal, ErrIPNotAllowed
+	}
 	if user.IsRootAdmin || permission == "" {
 		return principal, nil
 	}
 	role, err := s.repository.GetRoleByID(ctx, user.RoleID)
 	if err != nil {
-		return domain.Principal{}, ErrPermissionDenied
+		return principal, ErrPermissionDenied
 	}
 	principal.Permissions = role.Permissions
 	if !hasPermission(role.Permissions, permission) {
-		return domain.Principal{}, ErrPermissionDenied
+		return principal, ErrPermissionDenied
 	}
 	return principal, nil
 }
@@ -324,20 +324,20 @@ func (s *AuthService) authorizeService(ctx context.Context, accountID, clientIP 
 	if err != nil || !account.Active {
 		return domain.Principal{}, ErrInvalidCredentials
 	}
-	if !ipAllowed(clientIP, account.AllowedCIDRs) {
-		return domain.Principal{}, ErrIPNotAllowed
-	}
 	principal := domain.Principal{ID: account.ID, Kind: domain.PrincipalService}
+	if !ipAllowed(clientIP, account.AllowedCIDRs) {
+		return principal, ErrIPNotAllowed
+	}
 	if permission == "" {
 		return principal, nil
 	}
 
 	role, err := s.repository.GetRoleByID(ctx, account.RoleID)
 	if err != nil {
-		return domain.Principal{}, ErrPermissionDenied
+		return principal, ErrPermissionDenied
 	}
 	if !hasPermission(role.Permissions, permission) {
-		return domain.Principal{}, ErrPermissionDenied
+		return principal, ErrPermissionDenied
 	}
 	principal.Permissions = role.Permissions
 	return principal, nil
