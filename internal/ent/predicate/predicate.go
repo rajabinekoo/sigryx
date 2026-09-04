@@ -6,6 +6,9 @@ import (
 	"entgo.io/ent/dialect/sql"
 )
 
+// AuditEvent is the predicate function for auditevent builders.
+type AuditEvent func(*sql.Selector)
+
 // KeyRoot is the predicate function for keyroot builders.
 type KeyRoot func(*sql.Selector)
 
@@ -17,6 +20,9 @@ type ServiceAccount func(*sql.Selector)
 
 // Session is the predicate function for session builders.
 type Session func(*sql.Selector)
+
+// SigningRecord is the predicate function for signingrecord builders.
+type SigningRecord func(*sql.Selector)
 
 // UnsealKeySlot is the predicate function for unsealkeyslot builders.
 type UnsealKeySlot func(*sql.Selector)

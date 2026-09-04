@@ -1,4 +1,5 @@
-h1:qcbO3BylXCNnLBj53KfGRbtq5GHmFFl5zLr4tF+MXOc=
+h1:0DtUYvj7x2IY7Dkz4WgrdQnRx1zW7uQOHbBiF/DS31g=
 20260901085851_init.sql h1:FAPXQhCH0VDhBG4736K0YtqS7uSqvT1hrL01k6OaQa4=
 20260901130614_wallet_user_id.sql h1:tf4YxtL1Fn3whtuqyeAUTXopFx8sshs73RWgx+weiFE=
 20260902174153_auth_access.sql h1:fK7VBHpN+mVMB7EPnNtzg4Q3LB5aQuCj9hCxbvyrmNk=
+20260904090000_audit_integrity.sql h1:WFe+soSbzYtHvjWuHxVy+pEOoBBt48LIhrzCejcWAYY=

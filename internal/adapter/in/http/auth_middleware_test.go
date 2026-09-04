@@ -12,10 +12,11 @@ import (
 )
 
 type middlewareAuthStub struct {
-	permission domain.Permission
-	clientIP   string
-	token      string
-	principal  domain.Principal
+	permission   domain.Permission
+	clientIP     string
+	token        string
+	principal    domain.Principal
+	authorizeErr error
 }
 
 func (s *middlewareAuthStub) Setup(context.Context, portin.SetupInput) (*portin.SetupResult, error) {
@@ -36,10 +37,11 @@ func (s *middlewareAuthStub) Authorize(_ context.Context, token, clientIP string
 	s.token = token
 	s.clientIP = clientIP
 	s.permission = permission
-	if s.principal.ID != "" {
-		return s.principal, nil
+	principal := s.principal
+	if principal.ID == "" {
+		principal = domain.Principal{ID: "user-1", Kind: domain.PrincipalUser}
 	}
-	return domain.Principal{ID: "user-1", Kind: domain.PrincipalUser}, nil
+	return principal, s.authorizeErr
 }
 
 func TestAuthMiddlewareUsesRoutePermissionAndRemoteIP(t *testing.T) {
@@ -175,4 +177,38 @@ func TestAuthMiddlewareAllowsRecoveryOnlyForRootAdmin(t *testing.T) {
 			t.Fatalf("expected 403, got %d", recorder.Code)
 		}
 	})
+}
+
+func TestAuthMiddlewareUsesIntegrityAndAuditPermissions(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	tests := []struct {
+		method     string
+		path       string
+		permission domain.Permission
+	}{
+		{http.MethodPost, "/v1/sign/integrity", domain.PermissionSignIntegrity},
+		{http.MethodPost, "/v1/verify/integrity", domain.PermissionVerifyIntegrity},
+		{http.MethodGet, "/v1/audit/events", domain.PermissionAuditRead},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.method+" "+tt.path, func(t *testing.T) {
+			auth := &middlewareAuthStub{}
+			router := gin.New()
+			router.Use(authMiddleware(auth, nil))
+			router.Handle(tt.method, tt.path, func(c *gin.Context) { c.Status(http.StatusNoContent) })
+
+			req := httptest.NewRequest(tt.method, tt.path, nil)
+			req.Header.Set("Authorization", "Bearer abc")
+			recorder := httptest.NewRecorder()
+			router.ServeHTTP(recorder, req)
+
+			if recorder.Code != http.StatusNoContent {
+				t.Fatalf("expected 204, got %d", recorder.Code)
+			}
+			if auth.permission != tt.permission {
+				t.Fatalf("permission = %q, expected %q", auth.permission, tt.permission)
+			}
+		})
+	}
 }

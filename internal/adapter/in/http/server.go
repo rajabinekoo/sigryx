@@ -18,6 +18,7 @@ type Deps struct {
 	Wallets           portin.WalletUseCase
 	Signing           portin.SigningUseCase
 	Recovery          portin.RecoveryUseCase
+	Audit             portin.AuditUseCase
 	TrustedProxyCIDRs []string
 }
 
@@ -27,6 +28,10 @@ func New(deps Deps) http.Handler {
 	}
 
 	engine := gin.New()
+	engine.Use(requestMetadataMiddleware(deps.TrustedProxyCIDRs))
+	if deps.Audit != nil {
+		engine.Use(auditMiddleware(deps.Audit))
+	}
 	engine.Use(gin.Recovery())
 	if deps.Auth != nil {
 		engine.Use(authMiddleware(deps.Auth, deps.TrustedProxyCIDRs))
@@ -65,6 +70,10 @@ func New(deps Deps) http.Handler {
 
 	if deps.Recovery != nil {
 		registerRecoveryRoutes(api, deps.Recovery)
+	}
+
+	if deps.Audit != nil {
+		registerAuditRoutes(api, deps.Audit)
 	}
 
 	engine.GET("/docs", func(c *gin.Context) {

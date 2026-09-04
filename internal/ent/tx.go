@@ -12,6 +12,8 @@ import (
 // Tx is a transactional client that is created by calling Client.Tx().
 type Tx struct {
 	config
+	// AuditEvent is the client for interacting with the AuditEvent builders.
+	AuditEvent *AuditEventClient
 	// KeyRoot is the client for interacting with the KeyRoot builders.
 	KeyRoot *KeyRootClient
 	// Role is the client for interacting with the Role builders.
@@ -20,6 +22,8 @@ type Tx struct {
 	ServiceAccount *ServiceAccountClient
 	// Session is the client for interacting with the Session builders.
 	Session *SessionClient
+	// SigningRecord is the client for interacting with the SigningRecord builders.
+	SigningRecord *SigningRecordClient
 	// UnsealKeySlot is the client for interacting with the UnsealKeySlot builders.
 	UnsealKeySlot *UnsealKeySlotClient
 	// User is the client for interacting with the User builders.
@@ -159,10 +163,12 @@ func (tx *Tx) Client() *Client {
 }
 
 func (tx *Tx) init() {
+	tx.AuditEvent = NewAuditEventClient(tx.config)
 	tx.KeyRoot = NewKeyRootClient(tx.config)
 	tx.Role = NewRoleClient(tx.config)
 	tx.ServiceAccount = NewServiceAccountClient(tx.config)
 	tx.Session = NewSessionClient(tx.config)
+	tx.SigningRecord = NewSigningRecordClient(tx.config)
 	tx.UnsealKeySlot = NewUnsealKeySlotClient(tx.config)
 	tx.User = NewUserClient(tx.config)
 	tx.Wallet = NewWalletClient(tx.config)
@@ -176,7 +182,7 @@ func (tx *Tx) init() {
 // of them in order to commit or rollback the transaction.
 //
 // If a closed transaction is embedded in one of the generated entities, and the entity
-// applies a query, for example: KeyRoot.QueryXXX(), the query will be executed
+// applies a query, for example: AuditEvent.QueryXXX(), the query will be executed
 // through the driver which created this transaction.
 //
 // Note that txDriver is not goroutine safe.

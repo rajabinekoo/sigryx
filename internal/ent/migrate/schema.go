@@ -9,6 +9,35 @@ import (
 )
 
 var (
+	// AuditEventsColumns holds the columns for the "audit_events" table.
+	AuditEventsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeString, SchemaType: map[string]string{"postgres": "uuid"}},
+		{Name: "occurred_at", Type: field.TypeTime},
+		{Name: "actor_type", Type: field.TypeString, Nullable: true},
+		{Name: "actor_id", Type: field.TypeString, Nullable: true},
+		{Name: "session_id", Type: field.TypeString, Nullable: true},
+		{Name: "action", Type: field.TypeString},
+		{Name: "outcome", Type: field.TypeString},
+		{Name: "source_ip", Type: field.TypeString, Nullable: true},
+		{Name: "request_id", Type: field.TypeString, Nullable: true},
+		{Name: "method", Type: field.TypeString, Nullable: true},
+		{Name: "path", Type: field.TypeString, Nullable: true},
+		{Name: "status_code", Type: field.TypeInt, Default: 0},
+		{Name: "details", Type: field.TypeJSON},
+	}
+	// AuditEventsTable holds the schema information for the "audit_events" table.
+	AuditEventsTable = &schema.Table{
+		Name:       "audit_events",
+		Columns:    AuditEventsColumns,
+		PrimaryKey: []*schema.Column{AuditEventsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "auditevent_occurred_at",
+				Unique:  false,
+				Columns: []*schema.Column{AuditEventsColumns[1]},
+			},
+		},
+	}
 	// KeyRootsColumns holds the columns for the "key_roots" table.
 	KeyRootsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeString, SchemaType: map[string]string{"postgres": "uuid"}},
@@ -88,6 +117,27 @@ var (
 				Name:    "session_user_id",
 				Unique:  false,
 				Columns: []*schema.Column{SessionsColumns[4]},
+			},
+		},
+	}
+	// SigningRecordsColumns holds the columns for the "signing_records" table.
+	SigningRecordsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeString, SchemaType: map[string]string{"postgres": "uuid"}},
+		{Name: "context", Type: field.TypeString},
+		{Name: "object_id", Type: field.TypeString},
+		{Name: "encrypted_record", Type: field.TypeBytes},
+		{Name: "created_at", Type: field.TypeTime},
+	}
+	// SigningRecordsTable holds the schema information for the "signing_records" table.
+	SigningRecordsTable = &schema.Table{
+		Name:       "signing_records",
+		Columns:    SigningRecordsColumns,
+		PrimaryKey: []*schema.Column{SigningRecordsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "signingrecord_context_object_id",
+				Unique:  true,
+				Columns: []*schema.Column{SigningRecordsColumns[1], SigningRecordsColumns[2]},
 			},
 		},
 	}
@@ -215,10 +265,12 @@ var (
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
+		AuditEventsTable,
 		KeyRootsTable,
 		RolesTable,
 		ServiceAccountsTable,
 		SessionsTable,
+		SigningRecordsTable,
 		UnsealKeySlotsTable,
 		UsersTable,
 		WalletsTable,
@@ -227,6 +279,11 @@ var (
 )
 
 func init() {
+	AuditEventsTable.Annotation = &entsql.Annotation{}
+	AuditEventsTable.Annotation.Checks = map[string]string{
+		"audit_action_not_empty":  "length(action) > 0",
+		"audit_outcome_not_empty": "length(outcome) > 0",
+	}
 	KeyRootsTable.Annotation = &entsql.Annotation{}
 	KeyRootsTable.Annotation.Checks = map[string]string{
 		"key_root_sealed_seed_not_empty": "octet_length(sealed_seed) > 0",
@@ -240,6 +297,12 @@ func init() {
 	SessionsTable.Annotation = &entsql.Annotation{}
 	SessionsTable.Annotation.Checks = map[string]string{
 		"session_refresh_token_hash_size": "octet_length(refresh_token_hash) = 32",
+	}
+	SigningRecordsTable.Annotation = &entsql.Annotation{}
+	SigningRecordsTable.Annotation.Checks = map[string]string{
+		"signing_record_context_not_empty":   "length(context) > 0",
+		"signing_record_encrypted_not_empty": "octet_length(encrypted_record) > 0",
+		"signing_record_object_id_not_empty": "length(object_id) > 0",
 	}
 	UnsealKeySlotsTable.Annotation = &entsql.Annotation{}
 	UnsealKeySlotsTable.Annotation.Checks = map[string]string{

@@ -15,10 +15,12 @@ import (
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"github.com/rajabinekoo/sigryx/internal/ent/auditevent"
 	"github.com/rajabinekoo/sigryx/internal/ent/keyroot"
 	"github.com/rajabinekoo/sigryx/internal/ent/role"
 	"github.com/rajabinekoo/sigryx/internal/ent/serviceaccount"
 	"github.com/rajabinekoo/sigryx/internal/ent/session"
+	"github.com/rajabinekoo/sigryx/internal/ent/signingrecord"
 	"github.com/rajabinekoo/sigryx/internal/ent/unsealkeyslot"
 	"github.com/rajabinekoo/sigryx/internal/ent/user"
 	"github.com/rajabinekoo/sigryx/internal/ent/wallet"
@@ -30,6 +32,8 @@ type Client struct {
 	config
 	// Schema is the client for creating, migrating and dropping schema.
 	Schema *migrate.Schema
+	// AuditEvent is the client for interacting with the AuditEvent builders.
+	AuditEvent *AuditEventClient
 	// KeyRoot is the client for interacting with the KeyRoot builders.
 	KeyRoot *KeyRootClient
 	// Role is the client for interacting with the Role builders.
@@ -38,6 +42,8 @@ type Client struct {
 	ServiceAccount *ServiceAccountClient
 	// Session is the client for interacting with the Session builders.
 	Session *SessionClient
+	// SigningRecord is the client for interacting with the SigningRecord builders.
+	SigningRecord *SigningRecordClient
 	// UnsealKeySlot is the client for interacting with the UnsealKeySlot builders.
 	UnsealKeySlot *UnsealKeySlotClient
 	// User is the client for interacting with the User builders.
@@ -57,10 +63,12 @@ func NewClient(opts ...Option) *Client {
 
 func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
+	c.AuditEvent = NewAuditEventClient(c.config)
 	c.KeyRoot = NewKeyRootClient(c.config)
 	c.Role = NewRoleClient(c.config)
 	c.ServiceAccount = NewServiceAccountClient(c.config)
 	c.Session = NewSessionClient(c.config)
+	c.SigningRecord = NewSigningRecordClient(c.config)
 	c.UnsealKeySlot = NewUnsealKeySlotClient(c.config)
 	c.User = NewUserClient(c.config)
 	c.Wallet = NewWalletClient(c.config)
@@ -157,10 +165,12 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	return &Tx{
 		ctx:            ctx,
 		config:         cfg,
+		AuditEvent:     NewAuditEventClient(cfg),
 		KeyRoot:        NewKeyRootClient(cfg),
 		Role:           NewRoleClient(cfg),
 		ServiceAccount: NewServiceAccountClient(cfg),
 		Session:        NewSessionClient(cfg),
+		SigningRecord:  NewSigningRecordClient(cfg),
 		UnsealKeySlot:  NewUnsealKeySlotClient(cfg),
 		User:           NewUserClient(cfg),
 		Wallet:         NewWalletClient(cfg),
@@ -184,10 +194,12 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	return &Tx{
 		ctx:            ctx,
 		config:         cfg,
+		AuditEvent:     NewAuditEventClient(cfg),
 		KeyRoot:        NewKeyRootClient(cfg),
 		Role:           NewRoleClient(cfg),
 		ServiceAccount: NewServiceAccountClient(cfg),
 		Session:        NewSessionClient(cfg),
+		SigningRecord:  NewSigningRecordClient(cfg),
 		UnsealKeySlot:  NewUnsealKeySlotClient(cfg),
 		User:           NewUserClient(cfg),
 		Wallet:         NewWalletClient(cfg),
@@ -198,7 +210,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 // Debug returns a new debug-client. It's used to get verbose logging on specific operations.
 //
 //	client.Debug().
-//		KeyRoot.
+//		AuditEvent.
 //		Query().
 //		Count(ctx)
 func (c *Client) Debug() *Client {
@@ -221,8 +233,8 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.KeyRoot, c.Role, c.ServiceAccount, c.Session, c.UnsealKeySlot, c.User,
-		c.Wallet, c.WalletCounter,
+		c.AuditEvent, c.KeyRoot, c.Role, c.ServiceAccount, c.Session, c.SigningRecord,
+		c.UnsealKeySlot, c.User, c.Wallet, c.WalletCounter,
 	} {
 		n.Use(hooks...)
 	}
@@ -232,8 +244,8 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.KeyRoot, c.Role, c.ServiceAccount, c.Session, c.UnsealKeySlot, c.User,
-		c.Wallet, c.WalletCounter,
+		c.AuditEvent, c.KeyRoot, c.Role, c.ServiceAccount, c.Session, c.SigningRecord,
+		c.UnsealKeySlot, c.User, c.Wallet, c.WalletCounter,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -242,6 +254,8 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 // Mutate implements the ent.Mutator interface.
 func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 	switch m := m.(type) {
+	case *AuditEventMutation:
+		return c.AuditEvent.mutate(ctx, m)
 	case *KeyRootMutation:
 		return c.KeyRoot.mutate(ctx, m)
 	case *RoleMutation:
@@ -250,6 +264,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.ServiceAccount.mutate(ctx, m)
 	case *SessionMutation:
 		return c.Session.mutate(ctx, m)
+	case *SigningRecordMutation:
+		return c.SigningRecord.mutate(ctx, m)
 	case *UnsealKeySlotMutation:
 		return c.UnsealKeySlot.mutate(ctx, m)
 	case *UserMutation:
@@ -260,6 +276,139 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.WalletCounter.mutate(ctx, m)
 	default:
 		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
+	}
+}
+
+// AuditEventClient is a client for the AuditEvent schema.
+type AuditEventClient struct {
+	config
+}
+
+// NewAuditEventClient returns a client for the AuditEvent from the given config.
+func NewAuditEventClient(c config) *AuditEventClient {
+	return &AuditEventClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `auditevent.Hooks(f(g(h())))`.
+func (c *AuditEventClient) Use(hooks ...Hook) {
+	c.hooks.AuditEvent = append(c.hooks.AuditEvent, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `auditevent.Intercept(f(g(h())))`.
+func (c *AuditEventClient) Intercept(interceptors ...Interceptor) {
+	c.inters.AuditEvent = append(c.inters.AuditEvent, interceptors...)
+}
+
+// Create returns a builder for creating a AuditEvent entity.
+func (c *AuditEventClient) Create() *AuditEventCreate {
+	mutation := newAuditEventMutation(c.config, OpCreate)
+	return &AuditEventCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of AuditEvent entities.
+func (c *AuditEventClient) CreateBulk(builders ...*AuditEventCreate) *AuditEventCreateBulk {
+	return &AuditEventCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *AuditEventClient) MapCreateBulk(slice any, setFunc func(*AuditEventCreate, int)) *AuditEventCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &AuditEventCreateBulk{err: fmt.Errorf("calling to AuditEventClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*AuditEventCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &AuditEventCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for AuditEvent.
+func (c *AuditEventClient) Update() *AuditEventUpdate {
+	mutation := newAuditEventMutation(c.config, OpUpdate)
+	return &AuditEventUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *AuditEventClient) UpdateOne(_m *AuditEvent) *AuditEventUpdateOne {
+	mutation := newAuditEventMutation(c.config, OpUpdateOne, withAuditEvent(_m))
+	return &AuditEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *AuditEventClient) UpdateOneID(id string) *AuditEventUpdateOne {
+	mutation := newAuditEventMutation(c.config, OpUpdateOne, withAuditEventID(id))
+	return &AuditEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for AuditEvent.
+func (c *AuditEventClient) Delete() *AuditEventDelete {
+	mutation := newAuditEventMutation(c.config, OpDelete)
+	return &AuditEventDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *AuditEventClient) DeleteOne(_m *AuditEvent) *AuditEventDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *AuditEventClient) DeleteOneID(id string) *AuditEventDeleteOne {
+	builder := c.Delete().Where(auditevent.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &AuditEventDeleteOne{builder}
+}
+
+// Query returns a query builder for AuditEvent.
+func (c *AuditEventClient) Query() *AuditEventQuery {
+	return &AuditEventQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeAuditEvent},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a AuditEvent entity by its id.
+func (c *AuditEventClient) Get(ctx context.Context, id string) (*AuditEvent, error) {
+	return c.Query().Where(auditevent.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *AuditEventClient) GetX(ctx context.Context, id string) *AuditEvent {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *AuditEventClient) Hooks() []Hook {
+	return c.hooks.AuditEvent
+}
+
+// Interceptors returns the client interceptors.
+func (c *AuditEventClient) Interceptors() []Interceptor {
+	return c.inters.AuditEvent
+}
+
+func (c *AuditEventClient) mutate(ctx context.Context, m *AuditEventMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&AuditEventCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&AuditEventUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&AuditEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&AuditEventDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown AuditEvent mutation op: %q", m.Op())
 	}
 }
 
@@ -891,6 +1040,139 @@ func (c *SessionClient) mutate(ctx context.Context, m *SessionMutation) (Value, 
 	}
 }
 
+// SigningRecordClient is a client for the SigningRecord schema.
+type SigningRecordClient struct {
+	config
+}
+
+// NewSigningRecordClient returns a client for the SigningRecord from the given config.
+func NewSigningRecordClient(c config) *SigningRecordClient {
+	return &SigningRecordClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `signingrecord.Hooks(f(g(h())))`.
+func (c *SigningRecordClient) Use(hooks ...Hook) {
+	c.hooks.SigningRecord = append(c.hooks.SigningRecord, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `signingrecord.Intercept(f(g(h())))`.
+func (c *SigningRecordClient) Intercept(interceptors ...Interceptor) {
+	c.inters.SigningRecord = append(c.inters.SigningRecord, interceptors...)
+}
+
+// Create returns a builder for creating a SigningRecord entity.
+func (c *SigningRecordClient) Create() *SigningRecordCreate {
+	mutation := newSigningRecordMutation(c.config, OpCreate)
+	return &SigningRecordCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of SigningRecord entities.
+func (c *SigningRecordClient) CreateBulk(builders ...*SigningRecordCreate) *SigningRecordCreateBulk {
+	return &SigningRecordCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *SigningRecordClient) MapCreateBulk(slice any, setFunc func(*SigningRecordCreate, int)) *SigningRecordCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &SigningRecordCreateBulk{err: fmt.Errorf("calling to SigningRecordClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*SigningRecordCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &SigningRecordCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for SigningRecord.
+func (c *SigningRecordClient) Update() *SigningRecordUpdate {
+	mutation := newSigningRecordMutation(c.config, OpUpdate)
+	return &SigningRecordUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *SigningRecordClient) UpdateOne(_m *SigningRecord) *SigningRecordUpdateOne {
+	mutation := newSigningRecordMutation(c.config, OpUpdateOne, withSigningRecord(_m))
+	return &SigningRecordUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *SigningRecordClient) UpdateOneID(id string) *SigningRecordUpdateOne {
+	mutation := newSigningRecordMutation(c.config, OpUpdateOne, withSigningRecordID(id))
+	return &SigningRecordUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for SigningRecord.
+func (c *SigningRecordClient) Delete() *SigningRecordDelete {
+	mutation := newSigningRecordMutation(c.config, OpDelete)
+	return &SigningRecordDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *SigningRecordClient) DeleteOne(_m *SigningRecord) *SigningRecordDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *SigningRecordClient) DeleteOneID(id string) *SigningRecordDeleteOne {
+	builder := c.Delete().Where(signingrecord.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &SigningRecordDeleteOne{builder}
+}
+
+// Query returns a query builder for SigningRecord.
+func (c *SigningRecordClient) Query() *SigningRecordQuery {
+	return &SigningRecordQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeSigningRecord},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a SigningRecord entity by its id.
+func (c *SigningRecordClient) Get(ctx context.Context, id string) (*SigningRecord, error) {
+	return c.Query().Where(signingrecord.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *SigningRecordClient) GetX(ctx context.Context, id string) *SigningRecord {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *SigningRecordClient) Hooks() []Hook {
+	return c.hooks.SigningRecord
+}
+
+// Interceptors returns the client interceptors.
+func (c *SigningRecordClient) Interceptors() []Interceptor {
+	return c.inters.SigningRecord
+}
+
+func (c *SigningRecordClient) mutate(ctx context.Context, m *SigningRecordMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&SigningRecordCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&SigningRecordUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&SigningRecordUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&SigningRecordDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown SigningRecord mutation op: %q", m.Op())
+	}
+}
+
 // UnsealKeySlotClient is a client for the UnsealKeySlot schema.
 type UnsealKeySlotClient struct {
 	config
@@ -1490,11 +1772,11 @@ func (c *WalletCounterClient) mutate(ctx context.Context, m *WalletCounterMutati
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		KeyRoot, Role, ServiceAccount, Session, UnsealKeySlot, User, Wallet,
-		WalletCounter []ent.Hook
+		AuditEvent, KeyRoot, Role, ServiceAccount, Session, SigningRecord,
+		UnsealKeySlot, User, Wallet, WalletCounter []ent.Hook
 	}
 	inters struct {
-		KeyRoot, Role, ServiceAccount, Session, UnsealKeySlot, User, Wallet,
-		WalletCounter []ent.Interceptor
+		AuditEvent, KeyRoot, Role, ServiceAccount, Session, SigningRecord,
+		UnsealKeySlot, User, Wallet, WalletCounter []ent.Interceptor
 	}
 )

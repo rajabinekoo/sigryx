@@ -37,6 +37,10 @@ type Config struct {
 	AuthRefreshTTL    time.Duration `env:"AUTH_REFRESH_TTL" envDefault:"168h"`
 	TrustedProxyCIDRs string        `env:"TRUSTED_PROXY_CIDRS"`
 
+	// Integrity signing / alerting
+	AlertWebhookURL     string        `env:"ALERT_WEBHOOK_URL"`
+	AlertWebhookTimeout time.Duration `env:"ALERT_WEBHOOK_TIMEOUT" envDefault:"2s"`
+
 	// App Envs
 	MaxUnsealSize int `env:"MAX_UNSEAL_SIZE,required"`
 }

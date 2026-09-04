@@ -337,6 +337,67 @@ func TestVerifyGenericRawHTTP(t *testing.T) {
 	}
 }
 
+func TestSignIntegrityHTTPWithNestedFields(t *testing.T) {
+	fake := &fakeSigningUseCase{integrityResult: &portin.SignIntegrityResult{
+		Signature: bytes.Repeat([]byte{0xaa}, 64), Digest: bytes.Repeat([]byte{0xbb}, 32), Reused: true,
+	}}
+	response := serveJSON(t, New(Deps{Signing: fake}), http.MethodPost, "/v1/sign/integrity", `{
+		"wallet_id":"wallet-1",
+		"context":"ledger:journal-entry:v1",
+		"object_id":"journal-100",
+		"payload":{"id":"journal-100","lines":[{"amount":"10"}],"meta":{"note":"mutable"}},
+		"integrity_fields":["/id","/lines/0/amount"]
+	}`)
+	if response.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", response.Code, response.Body.String())
+	}
+	if fake.integrityInput.ObjectID != "journal-100" || len(fake.integrityInput.IntegrityFields) != 2 {
+		t.Fatalf("unexpected input: %+v", fake.integrityInput)
+	}
+	var body struct {
+		Signature string `json:"signature"`
+		Digest    string `json:"digest"`
+		Reused    bool   `json:"reused"`
+	}
+	decodeResponse(t, response, &body)
+	if !body.Reused || body.Signature != "0x"+strings.Repeat("aa", 64) || body.Digest != "0x"+strings.Repeat("bb", 32) {
+		t.Fatalf("unexpected response: %+v", body)
+	}
+}
+
+func TestVerifyIntegrityHTTP(t *testing.T) {
+	signature := bytes.Repeat([]byte{0xcc}, 64)
+	fake := &fakeSigningUseCase{verifyIntegrityResult: &portin.VerifyIntegrityResult{
+		Valid: false, SignatureValid: false, RecordMatch: false,
+		Digest: bytes.Repeat([]byte{0xdd}, 32), Reason: "INTEGRITY_VALUE_MISMATCH",
+	}}
+	response := serveJSON(t, New(Deps{Signing: fake}), http.MethodPost, "/v1/verify/integrity", `{
+		"wallet_id":"wallet-1",
+		"context":"ledger:journal-entry:v1",
+		"object_id":"journal-100",
+		"payload":{"id":"journal-100","customer":{"amount":"20"}},
+		"integrity_fields":["/id","/customer/amount"],
+		"signature":"0x`+hex.EncodeToString(signature)+`"
+	}`)
+	if response.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", response.Code, response.Body.String())
+	}
+	if !bytes.Equal(fake.verifyIntegrityInput.Signature, signature) || fake.verifyIntegrityInput.ObjectID != "journal-100" {
+		t.Fatalf("unexpected input: %+v", fake.verifyIntegrityInput)
+	}
+	var body struct {
+		Valid          bool   `json:"valid"`
+		SignatureValid bool   `json:"signature_valid"`
+		RecordMatch    bool   `json:"record_match"`
+		Digest         string `json:"digest"`
+		Reason         string `json:"reason"`
+	}
+	decodeResponse(t, response, &body)
+	if body.Valid || body.RecordMatch || body.Reason != "INTEGRITY_VALUE_MISMATCH" || body.Digest != "0x"+strings.Repeat("dd", 32) {
+		t.Fatalf("unexpected response: %+v", body)
+	}
+}
+
 func TestSigningHTTPRejectsInvalidEncodedInputs(t *testing.T) {
 	tests := []struct {
 		name string
@@ -393,6 +454,10 @@ type fakeSigningUseCase struct {
 	dataResult              *portin.SignDataResult
 	verifyDataInput         portin.VerifyDataInput
 	verifyDataResult        *portin.VerifyResult
+	integrityInput          portin.SignIntegrityInput
+	integrityResult         *portin.SignIntegrityResult
+	verifyIntegrityInput    portin.VerifyIntegrityInput
+	verifyIntegrityResult   *portin.VerifyIntegrityResult
 }
 
 func (f *fakeSigningUseCase) SignTransaction(_ context.Context, input portin.SignTransactionInput) (*portin.SignTransactionResult, error) {
@@ -423,6 +488,16 @@ func (f *fakeSigningUseCase) SignData(_ context.Context, input portin.SignDataIn
 func (f *fakeSigningUseCase) VerifyData(_ context.Context, input portin.VerifyDataInput) (*portin.VerifyResult, error) {
 	f.verifyDataInput = input
 	return f.verifyDataResult, nil
+}
+
+func (f *fakeSigningUseCase) SignIntegrity(_ context.Context, input portin.SignIntegrityInput) (*portin.SignIntegrityResult, error) {
+	f.integrityInput = input
+	return f.integrityResult, nil
+}
+
+func (f *fakeSigningUseCase) VerifyIntegrity(_ context.Context, input portin.VerifyIntegrityInput) (*portin.VerifyIntegrityResult, error) {
+	f.verifyIntegrityInput = input
+	return f.verifyIntegrityResult, nil
 }
 
 func serveJSON(t *testing.T, handler http.Handler, method, path, body string) *httptest.ResponseRecorder {

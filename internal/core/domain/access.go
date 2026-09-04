@@ -15,9 +15,12 @@ const (
 	PermissionSignTransaction     Permission = "sign.transaction"
 	PermissionSignTypedData       Permission = "sign.typed_data"
 	PermissionSignGeneric         Permission = "sign.generic"
+	PermissionSignIntegrity       Permission = "sign.integrity"
 	PermissionVerifyTransaction   Permission = "verify.transaction"
 	PermissionVerifyTypedData     Permission = "verify.typed_data"
 	PermissionVerifyGeneric       Permission = "verify.generic"
+	PermissionVerifyIntegrity     Permission = "verify.integrity"
+	PermissionAuditRead           Permission = "audit.read"
 	PermissionAccessUsersManage   Permission = "access.users.manage"
 	PermissionAccessRolesManage   Permission = "access.roles.manage"
 	PermissionAccessServiceManage Permission = "access.service_accounts.manage"
@@ -40,9 +43,12 @@ var PermissionDefinitions = []PermissionDefinition{
 	{PermissionSignTransaction, "signing", "Sign Ethereum transaction"},
 	{PermissionSignTypedData, "signing", "Sign EIP-712 typed data"},
 	{PermissionSignGeneric, "signing", "Sign generic data"},
+	{PermissionSignIntegrity, "signing", "Sign integrity-protected JSON fields"},
 	{PermissionVerifyTransaction, "verification", "Verify Ethereum transaction"},
 	{PermissionVerifyTypedData, "verification", "Verify EIP-712 typed data"},
 	{PermissionVerifyGeneric, "verification", "Verify generic data"},
+	{PermissionVerifyIntegrity, "verification", "Verify integrity-protected JSON fields"},
+	{PermissionAuditRead, "audit", "Read system audit log"},
 	{PermissionAccessUsersManage, "access", "Manage users"},
 	{PermissionAccessRolesManage, "access", "Manage roles"},
 	{PermissionAccessServiceManage, "access", "Manage service accounts"},

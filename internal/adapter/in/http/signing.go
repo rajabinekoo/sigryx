@@ -102,6 +102,45 @@ type signDataOutput struct {
 	}
 }
 
+type signIntegrityInput struct {
+	Body struct {
+		WalletID        string          `json:"wallet_id" doc:"Sigryx wallet ID used to sign the protected JSON fields."`
+		Context         string          `json:"context" doc:"Application-level namespace, for example ledger:journal-entry:v1. It becomes part of the signed digest and SigningRecord identity."`
+		ObjectID        string          `json:"object_id" doc:"Stable application object identifier. Together with context it permanently identifies the SigningRecord."`
+		Payload         json.RawMessage `json:"payload" doc:"JSON object containing the current application data. Only integrity_fields are included in the integrity signature."`
+		IntegrityFields []string        `json:"integrity_fields" doc:"RFC 6901 JSON Pointer paths to immutable fields, for example /id, /amount, /lines/0/value. The first successful signature freezes this field set for the object."`
+	}
+}
+
+type signIntegrityOutput struct {
+	Body struct {
+		Signature string `json:"signature" doc:"0x-prefixed 64-byte secp256k1 signature over the selected canonical fields."`
+		Digest    string `json:"digest" doc:"0x-prefixed 32-byte SHA-256 integrity digest."`
+		Reused    bool   `json:"reused" doc:"True when the object was already signed with exactly the same protected values and Sigryx returned the original signature without using the private key again."`
+	}
+}
+
+type verifyIntegrityInput struct {
+	Body struct {
+		WalletID        string          `json:"wallet_id" doc:"Wallet expected to have produced the integrity signature."`
+		Context         string          `json:"context" doc:"Must match the original integrity signing context."`
+		ObjectID        string          `json:"object_id" doc:"Stable object ID used during the first integrity signature."`
+		Payload         json.RawMessage `json:"payload" doc:"Current JSON object to compare with the original protected values."`
+		IntegrityFields []string        `json:"integrity_fields" doc:"Same RFC 6901 field set used during the first integrity signature."`
+		Signature       string          `json:"signature" doc:"0x-prefixed 64-byte integrity signature to verify."`
+	}
+}
+
+type verifyIntegrityOutput struct {
+	Body struct {
+		Valid          bool   `json:"valid" doc:"True only when both the cryptographic signature and historical SigningRecord match."`
+		SignatureValid bool   `json:"signature_valid" doc:"Whether the supplied signature is valid for the current selected values and wallet public key."`
+		RecordMatch    bool   `json:"record_match" doc:"Whether wallet, protected field schema, selected values, digest, and signature match the immutable SigningRecord."`
+		Digest         string `json:"digest" doc:"0x-prefixed 32-byte digest computed from the current protected fields."`
+		Reason         string `json:"reason,omitempty" doc:"Mismatch reason when valid is false, for example INTEGRITY_VALUE_MISMATCH or SIGNING_RECORD_TAMPERED."`
+	}
+}
+
 type verifyDataInput struct {
 	Body struct {
 		WalletID  string            `json:"wallet_id" doc:"Sigryx wallet ID whose persisted public key is used for verification."`
@@ -212,6 +251,50 @@ func registerSigningRoutes(api huma.API, signing portin.SigningUseCase) {
 			return nil, translate(err)
 		}
 		return verifyHTTPResult(result), nil
+	})
+
+	huma.Register(api, huma.Operation{
+		OperationID: "sign_integrity", Method: http.MethodPost, Path: "/v1/sign/integrity",
+		Summary: "Sign selected immutable fields from a JSON object", Tags: []string{"signing"},
+	}, func(ctx context.Context, in *signIntegrityInput) (*signIntegrityOutput, error) {
+		if !json.Valid(in.Body.Payload) {
+			return nil, huma.Error400BadRequest("payload must be valid JSON")
+		}
+		result, err := signing.SignIntegrity(ctx, portin.SignIntegrityInput{
+			WalletID: in.Body.WalletID, Context: in.Body.Context, ObjectID: in.Body.ObjectID,
+			Payload: append([]byte(nil), in.Body.Payload...), IntegrityFields: append([]string(nil), in.Body.IntegrityFields...),
+		})
+		if err != nil {
+			return nil, translate(err)
+		}
+		out := &signIntegrityOutput{}
+		out.Body.Signature, out.Body.Digest, out.Body.Reused = hex0x(result.Signature), hex0x(result.Digest), result.Reused
+		return out, nil
+	})
+
+	huma.Register(api, huma.Operation{
+		OperationID: "verify_integrity", Method: http.MethodPost, Path: "/v1/verify/integrity",
+		Summary: "Verify selected JSON fields against their immutable SigningRecord", Tags: []string{"signing"},
+	}, func(ctx context.Context, in *verifyIntegrityInput) (*verifyIntegrityOutput, error) {
+		if !json.Valid(in.Body.Payload) {
+			return nil, huma.Error400BadRequest("payload must be valid JSON")
+		}
+		signature, err := parseHex(in.Body.Signature)
+		if err != nil {
+			return nil, huma.Error400BadRequest("invalid signature")
+		}
+		result, err := signing.VerifyIntegrity(ctx, portin.VerifyIntegrityInput{
+			WalletID: in.Body.WalletID, Context: in.Body.Context, ObjectID: in.Body.ObjectID,
+			Payload: append([]byte(nil), in.Body.Payload...), IntegrityFields: append([]string(nil), in.Body.IntegrityFields...),
+			Signature: signature,
+		})
+		if err != nil {
+			return nil, translate(err)
+		}
+		out := &verifyIntegrityOutput{}
+		out.Body.Valid, out.Body.SignatureValid, out.Body.RecordMatch = result.Valid, result.SignatureValid, result.RecordMatch
+		out.Body.Digest, out.Body.Reason = hex0x(result.Digest), result.Reason
+		return out, nil
 	})
 }
 

@@ -10,6 +10,7 @@ import (
 	"syscall"
 
 	httpadapter "github.com/rajabinekoo/sigryx/internal/adapter/in/http"
+	alertadapter "github.com/rajabinekoo/sigryx/internal/adapter/out/alert"
 	"github.com/rajabinekoo/sigryx/internal/adapter/out/blockchain/ethereum"
 	postgresadapter "github.com/rajabinekoo/sigryx/internal/adapter/out/persistence/postgres"
 	"github.com/rajabinekoo/sigryx/internal/config"
@@ -91,6 +92,8 @@ func run() error {
 	keyRootRepository := postgresadapter.NewKeyRootRepository(entClient)
 	walletRepository := postgresadapter.NewWalletRepository(pool)
 	accessRepository := postgresadapter.NewAccessRepository(pool)
+	auditRepository := postgresadapter.NewAuditRepository(pool)
+	signingRecordRepository := postgresadapter.NewSigningRecordRepository(pool)
 
 	// ---- runtime secret ownership ----
 	secrets := secretstore.New()
@@ -110,6 +113,7 @@ func run() error {
 	}
 
 	accessService := service.NewAccessService(accessRepository)
+	auditService := service.NewAuditService(auditRepository)
 
 	sealService := service.NewSealService(
 		unsealKeySlotRepository,
@@ -131,11 +135,21 @@ func run() error {
 		ethereumAdapter,
 	)
 
+	alertSink, err := alertadapter.NewWebhook(cfg.AlertWebhookURL, cfg.AlertWebhookTimeout)
+	if err != nil {
+		return fmt.Errorf("initialize alert webhook: %w", err)
+	}
+
 	signingService := service.NewSigningService(
 		walletRepository,
 		keyRootRepository,
 		secrets,
 		ethereumAdapter,
+		service.IntegrityDependencies{
+			Records: signingRecordRepository,
+			Audit:   auditRepository,
+			Alerts:  alertSink,
+		},
 	)
 
 	recoveryService := service.NewRecoveryService(
@@ -152,6 +166,7 @@ func run() error {
 		Wallets:           walletService,
 		Signing:           signingService,
 		Recovery:          recoveryService,
+		Audit:             auditService,
 		TrustedProxyCIDRs: splitCSV(cfg.TrustedProxyCIDRs),
 	})
 
