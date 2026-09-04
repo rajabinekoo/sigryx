@@ -28,16 +28,21 @@ func (AuditEvent) Fields() []ent.Field {
 		field.String("path").Optional().Nillable().Immutable(),
 		field.Int("status_code").Default(0).Immutable(),
 		field.JSON("details", map[string]any{}).Default(map[string]any{}).Immutable(),
+		field.String("retention_class").Default("NORMAL").Immutable(),
 	}
 }
 
 func (AuditEvent) Indexes() []ent.Index {
-	return []ent.Index{index.Fields("occurred_at")}
+	return []ent.Index{
+		index.Fields("occurred_at"),
+		index.Fields("retention_class", "occurred_at", "id").StorageKey("audit_events_retention_cleanup"),
+	}
 }
 
 func (AuditEvent) Annotations() []schema.Annotation {
 	return []schema.Annotation{entsql.Checks(map[string]string{
-		"audit_action_not_empty":  "length(action) > 0",
-		"audit_outcome_not_empty": "length(outcome) > 0",
+		"audit_action_not_empty":      "length(action) > 0",
+		"audit_outcome_not_empty":     "length(outcome) > 0",
+		"audit_retention_class_valid": "retention_class IN ('NORMAL', 'CRITICAL')",
 	})}
 }

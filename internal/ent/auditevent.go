@@ -41,8 +41,10 @@ type AuditEvent struct {
 	// StatusCode holds the value of the "status_code" field.
 	StatusCode int `json:"status_code,omitempty"`
 	// Details holds the value of the "details" field.
-	Details      map[string]interface{} `json:"details,omitempty"`
-	selectValues sql.SelectValues
+	Details map[string]interface{} `json:"details,omitempty"`
+	// RetentionClass holds the value of the "retention_class" field.
+	RetentionClass string `json:"retention_class,omitempty"`
+	selectValues   sql.SelectValues
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -54,7 +56,7 @@ func (*AuditEvent) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case auditevent.FieldStatusCode:
 			values[i] = new(sql.NullInt64)
-		case auditevent.FieldID, auditevent.FieldActorType, auditevent.FieldActorID, auditevent.FieldSessionID, auditevent.FieldAction, auditevent.FieldOutcome, auditevent.FieldSourceIP, auditevent.FieldRequestID, auditevent.FieldMethod, auditevent.FieldPath:
+		case auditevent.FieldID, auditevent.FieldActorType, auditevent.FieldActorID, auditevent.FieldSessionID, auditevent.FieldAction, auditevent.FieldOutcome, auditevent.FieldSourceIP, auditevent.FieldRequestID, auditevent.FieldMethod, auditevent.FieldPath, auditevent.FieldRetentionClass:
 			values[i] = new(sql.NullString)
 		case auditevent.FieldOccurredAt:
 			values[i] = new(sql.NullTime)
@@ -160,6 +162,12 @@ func (_m *AuditEvent) assignValues(columns []string, values []any) error {
 					return fmt.Errorf("unmarshal field details: %w", err)
 				}
 			}
+		case auditevent.FieldRetentionClass:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field retention_class", values[i])
+			} else if value.Valid {
+				_m.RetentionClass = value.String
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -245,6 +253,9 @@ func (_m *AuditEvent) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("details=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Details))
+	builder.WriteString(", ")
+	builder.WriteString("retention_class=")
+	builder.WriteString(_m.RetentionClass)
 	builder.WriteByte(')')
 	return builder.String()
 }

@@ -167,6 +167,20 @@ func (_c *AuditEventCreate) SetDetails(v map[string]interface{}) *AuditEventCrea
 	return _c
 }
 
+// SetRetentionClass sets the "retention_class" field.
+func (_c *AuditEventCreate) SetRetentionClass(v string) *AuditEventCreate {
+	_c.mutation.SetRetentionClass(v)
+	return _c
+}
+
+// SetNillableRetentionClass sets the "retention_class" field if the given value is not nil.
+func (_c *AuditEventCreate) SetNillableRetentionClass(v *string) *AuditEventCreate {
+	if v != nil {
+		_c.SetRetentionClass(*v)
+	}
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *AuditEventCreate) SetID(v string) *AuditEventCreate {
 	_c.mutation.SetID(v)
@@ -220,6 +234,10 @@ func (_c *AuditEventCreate) defaults() {
 		v := auditevent.DefaultDetails
 		_c.mutation.SetDetails(v)
 	}
+	if _, ok := _c.mutation.RetentionClass(); !ok {
+		v := auditevent.DefaultRetentionClass
+		_c.mutation.SetRetentionClass(v)
+	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -248,6 +266,9 @@ func (_c *AuditEventCreate) check() error {
 	}
 	if _, ok := _c.mutation.Details(); !ok {
 		return &ValidationError{Name: "details", err: errors.New(`ent: missing required field "AuditEvent.details"`)}
+	}
+	if _, ok := _c.mutation.RetentionClass(); !ok {
+		return &ValidationError{Name: "retention_class", err: errors.New(`ent: missing required field "AuditEvent.retention_class"`)}
 	}
 	return nil
 }
@@ -332,6 +353,10 @@ func (_c *AuditEventCreate) createSpec() (*AuditEvent, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Details(); ok {
 		_spec.SetField(auditevent.FieldDetails, field.TypeJSON, value)
 		_node.Details = value
+	}
+	if value, ok := _c.mutation.RetentionClass(); ok {
+		_spec.SetField(auditevent.FieldRetentionClass, field.TypeString, value)
+		_node.RetentionClass = value
 	}
 	return _node, _spec
 }
@@ -437,6 +462,9 @@ func (u *AuditEventUpsertOne) UpdateNewValues() *AuditEventUpsertOne {
 		}
 		if _, exists := u.create.mutation.Details(); exists {
 			s.SetIgnore(auditevent.FieldDetails)
+		}
+		if _, exists := u.create.mutation.RetentionClass(); exists {
+			s.SetIgnore(auditevent.FieldRetentionClass)
 		}
 	}))
 	return u
@@ -687,6 +715,9 @@ func (u *AuditEventUpsertBulk) UpdateNewValues() *AuditEventUpsertBulk {
 			}
 			if _, exists := b.mutation.Details(); exists {
 				s.SetIgnore(auditevent.FieldDetails)
+			}
+			if _, exists := b.mutation.RetentionClass(); exists {
+				s.SetIgnore(auditevent.FieldRetentionClass)
 			}
 		}
 	}))

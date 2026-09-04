@@ -16,19 +16,20 @@ type auditListInput struct {
 }
 
 type auditEventBody struct {
-	ID         string              `json:"id"`
-	OccurredAt time.Time           `json:"occurred_at"`
-	ActorType  string              `json:"actor_type,omitempty"`
-	ActorID    string              `json:"actor_id,omitempty"`
-	SessionID  string              `json:"session_id,omitempty"`
-	Action     string              `json:"action"`
-	Outcome    domain.AuditOutcome `json:"outcome"`
-	SourceIP   string              `json:"source_ip,omitempty"`
-	RequestID  string              `json:"request_id,omitempty"`
-	Method     string              `json:"method,omitempty"`
-	Path       string              `json:"path,omitempty"`
-	StatusCode int                 `json:"status_code"`
-	Details    map[string]any      `json:"details,omitempty"`
+	ID             string                     `json:"id"`
+	OccurredAt     time.Time                  `json:"occurred_at"`
+	ActorType      string                     `json:"actor_type,omitempty"`
+	ActorID        string                     `json:"actor_id,omitempty"`
+	SessionID      string                     `json:"session_id,omitempty"`
+	Action         string                     `json:"action"`
+	Outcome        domain.AuditOutcome        `json:"outcome"`
+	SourceIP       string                     `json:"source_ip,omitempty"`
+	RequestID      string                     `json:"request_id,omitempty"`
+	Method         string                     `json:"method,omitempty"`
+	Path           string                     `json:"path,omitempty"`
+	StatusCode     int                        `json:"status_code"`
+	Details        map[string]any             `json:"details,omitempty"`
+	RetentionClass domain.AuditRetentionClass `json:"retention_class"`
 }
 
 type auditListOutput struct {
@@ -58,7 +59,7 @@ func registerAuditRoutes(api huma.API, audit portin.AuditUseCase) {
 				ActorType: event.ActorType, ActorID: event.ActorID, SessionID: event.SessionID,
 				Action: event.Action, Outcome: event.Outcome, SourceIP: event.SourceIP,
 				RequestID: event.RequestID, Method: event.Method, Path: event.Path,
-				StatusCode: event.StatusCode, Details: event.Details,
+				StatusCode: event.StatusCode, Details: event.Details, RetentionClass: event.RetentionClass,
 			}
 		}
 		return out, nil

@@ -52,6 +52,9 @@ func TestAuditMiddlewareRecordsDeniedRequestMetadata(t *testing.T) {
 	if event.Action != "sign.generic" || event.Outcome != domain.AuditOutcomeDenied || event.RequestID == "" || event.SourceIP == "" {
 		t.Fatalf("unexpected audit event: %+v", event)
 	}
+	if event.RetentionClass != domain.AuditRetentionCritical {
+		t.Fatalf("retention class = %q", event.RetentionClass)
+	}
 }
 
 type fakeAuditUseCase struct {

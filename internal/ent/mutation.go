@@ -48,26 +48,27 @@ const (
 // AuditEventMutation represents an operation that mutates the AuditEvent nodes in the graph.
 type AuditEventMutation struct {
 	config
-	op             Op
-	typ            string
-	id             *string
-	occurred_at    *time.Time
-	actor_type     *string
-	actor_id       *string
-	session_id     *string
-	action         *string
-	outcome        *string
-	source_ip      *string
-	request_id     *string
-	method         *string
-	_path          *string
-	status_code    *int
-	addstatus_code *int
-	details        *map[string]interface{}
-	clearedFields  map[string]struct{}
-	done           bool
-	oldValue       func(context.Context) (*AuditEvent, error)
-	predicates     []predicate.AuditEvent
+	op              Op
+	typ             string
+	id              *string
+	occurred_at     *time.Time
+	actor_type      *string
+	actor_id        *string
+	session_id      *string
+	action          *string
+	outcome         *string
+	source_ip       *string
+	request_id      *string
+	method          *string
+	_path           *string
+	status_code     *int
+	addstatus_code  *int
+	details         *map[string]interface{}
+	retention_class *string
+	clearedFields   map[string]struct{}
+	done            bool
+	oldValue        func(context.Context) (*AuditEvent, error)
+	predicates      []predicate.AuditEvent
 }
 
 var _ ent.Mutation = (*AuditEventMutation)(nil)
@@ -717,6 +718,42 @@ func (m *AuditEventMutation) ResetDetails() {
 	m.details = nil
 }
 
+// SetRetentionClass sets the "retention_class" field.
+func (m *AuditEventMutation) SetRetentionClass(s string) {
+	m.retention_class = &s
+}
+
+// RetentionClass returns the value of the "retention_class" field in the mutation.
+func (m *AuditEventMutation) RetentionClass() (r string, exists bool) {
+	v := m.retention_class
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRetentionClass returns the old "retention_class" field's value of the AuditEvent entity.
+// If the AuditEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AuditEventMutation) OldRetentionClass(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRetentionClass is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRetentionClass requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRetentionClass: %w", err)
+	}
+	return oldValue.RetentionClass, nil
+}
+
+// ResetRetentionClass resets all changes to the "retention_class" field.
+func (m *AuditEventMutation) ResetRetentionClass() {
+	m.retention_class = nil
+}
+
 // Where appends a list predicates to the AuditEventMutation builder.
 func (m *AuditEventMutation) Where(ps ...predicate.AuditEvent) {
 	m.predicates = append(m.predicates, ps...)
@@ -751,7 +788,7 @@ func (m *AuditEventMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *AuditEventMutation) Fields() []string {
-	fields := make([]string, 0, 12)
+	fields := make([]string, 0, 13)
 	if m.occurred_at != nil {
 		fields = append(fields, auditevent.FieldOccurredAt)
 	}
@@ -788,6 +825,9 @@ func (m *AuditEventMutation) Fields() []string {
 	if m.details != nil {
 		fields = append(fields, auditevent.FieldDetails)
 	}
+	if m.retention_class != nil {
+		fields = append(fields, auditevent.FieldRetentionClass)
+	}
 	return fields
 }
 
@@ -820,6 +860,8 @@ func (m *AuditEventMutation) Field(name string) (ent.Value, bool) {
 		return m.StatusCode()
 	case auditevent.FieldDetails:
 		return m.Details()
+	case auditevent.FieldRetentionClass:
+		return m.RetentionClass()
 	}
 	return nil, false
 }
@@ -853,6 +895,8 @@ func (m *AuditEventMutation) OldField(ctx context.Context, name string) (ent.Val
 		return m.OldStatusCode(ctx)
 	case auditevent.FieldDetails:
 		return m.OldDetails(ctx)
+	case auditevent.FieldRetentionClass:
+		return m.OldRetentionClass(ctx)
 	}
 	return nil, fmt.Errorf("unknown AuditEvent field %s", name)
 }
@@ -945,6 +989,13 @@ func (m *AuditEventMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetDetails(v)
+		return nil
+	case auditevent.FieldRetentionClass:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRetentionClass(v)
 		return nil
 	}
 	return fmt.Errorf("unknown AuditEvent field %s", name)
@@ -1090,6 +1141,9 @@ func (m *AuditEventMutation) ResetField(name string) error {
 		return nil
 	case auditevent.FieldDetails:
 		m.ResetDetails()
+		return nil
+	case auditevent.FieldRetentionClass:
+		m.ResetRetentionClass()
 		return nil
 	}
 	return fmt.Errorf("unknown AuditEvent field %s", name)

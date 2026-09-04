@@ -454,7 +454,7 @@ func (s *SigningService) integrityIncident(ctx context.Context, code, contextNam
 			ID: idgen.New(), OccurredAt: time.Now().UTC(), ActorType: string(metadata.Principal.Kind),
 			ActorID: metadata.Principal.ID, SessionID: metadata.Principal.SessionID,
 			Action: "security.integrity_violation", Outcome: domain.AuditOutcomeBlocked,
-			SourceIP: metadata.SourceIP, RequestID: metadata.RequestID,
+			RetentionClass: domain.AuditRetentionCritical, SourceIP: metadata.SourceIP, RequestID: metadata.RequestID,
 			Details: mergeDetails(details, map[string]any{"code": code}),
 		})
 	}
@@ -468,7 +468,7 @@ func (s *SigningService) integrityIncident(ctx context.Context, code, contextNam
 				ID: idgen.New(), OccurredAt: time.Now().UTC(), ActorType: string(metadata.Principal.Kind),
 				ActorID: metadata.Principal.ID, SessionID: metadata.Principal.SessionID,
 				Action: "security.alert_delivery_failed", Outcome: domain.AuditOutcomeFailed,
-				SourceIP: metadata.SourceIP, RequestID: metadata.RequestID,
+				RetentionClass: domain.AuditRetentionCritical, SourceIP: metadata.SourceIP, RequestID: metadata.RequestID,
 				Details: map[string]any{"code": code, "context": contextName, "object_id": objectID},
 			})
 		}

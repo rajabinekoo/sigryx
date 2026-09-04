@@ -20,6 +20,9 @@ func TestAuditServiceRecordAndList(t *testing.T) {
 	if len(repository.items) != 1 || repository.items[0].ID == "" {
 		t.Fatalf("unexpected audit repository state: %+v", repository.items)
 	}
+	if repository.items[0].RetentionClass != domain.AuditRetentionCritical {
+		t.Fatalf("retention class = %q", repository.items[0].RetentionClass)
+	}
 
 	result, err := service.List(context.Background(), portin.AuditListInput{Page: 1, Limit: 50})
 	if err != nil {

@@ -24,6 +24,7 @@ var (
 		{Name: "path", Type: field.TypeString, Nullable: true},
 		{Name: "status_code", Type: field.TypeInt, Default: 0},
 		{Name: "details", Type: field.TypeJSON},
+		{Name: "retention_class", Type: field.TypeString, Default: "NORMAL"},
 	}
 	// AuditEventsTable holds the schema information for the "audit_events" table.
 	AuditEventsTable = &schema.Table{
@@ -35,6 +36,11 @@ var (
 				Name:    "auditevent_occurred_at",
 				Unique:  false,
 				Columns: []*schema.Column{AuditEventsColumns[1]},
+			},
+			{
+				Name:    "audit_events_retention_cleanup",
+				Unique:  false,
+				Columns: []*schema.Column{AuditEventsColumns[13], AuditEventsColumns[1], AuditEventsColumns[0]},
 			},
 		},
 	}
@@ -281,8 +287,9 @@ var (
 func init() {
 	AuditEventsTable.Annotation = &entsql.Annotation{}
 	AuditEventsTable.Annotation.Checks = map[string]string{
-		"audit_action_not_empty":  "length(action) > 0",
-		"audit_outcome_not_empty": "length(outcome) > 0",
+		"audit_action_not_empty":      "length(action) > 0",
+		"audit_outcome_not_empty":     "length(outcome) > 0",
+		"audit_retention_class_valid": "retention_class IN ('NORMAL', 'CRITICAL')",
 	}
 	KeyRootsTable.Annotation = &entsql.Annotation{}
 	KeyRootsTable.Annotation.Checks = map[string]string{

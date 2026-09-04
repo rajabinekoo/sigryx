@@ -271,6 +271,9 @@ func TestSigningServiceIntegrityFreezesNestedFieldSchemaAndValues(t *testing.T) 
 	if len(audit.events) != 1 || len(alerts.alerts) != 1 || alerts.alerts[0].Code != "INTEGRITY_VALUE_MISMATCH" {
 		t.Fatalf("expected audit+alert for value mismatch: audit=%d alerts=%+v", len(audit.events), alerts.alerts)
 	}
+	if audit.events[0].RetentionClass != domain.AuditRetentionCritical {
+		t.Fatalf("integrity incident retention class = %q", audit.events[0].RetentionClass)
+	}
 
 	_, err = svc.SignIntegrity(context.Background(), portin.SignIntegrityInput{
 		WalletID: wallet.ID, Context: "ledger:journal-entry:v1", ObjectID: "journal-1",

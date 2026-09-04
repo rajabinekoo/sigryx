@@ -28,6 +28,7 @@ func (s *AuditService) Record(ctx context.Context, event domain.AuditEvent) erro
 	if event.OccurredAt.IsZero() {
 		event.OccurredAt = time.Now().UTC()
 	}
+	event.RetentionClass = event.EffectiveRetentionClass()
 	return s.repository.Append(ctx, event)
 }
 

@@ -43,6 +43,10 @@ func init() {
 	auditeventDescDetails := auditeventFields[12].Descriptor()
 	// auditevent.DefaultDetails holds the default value on creation for the details field.
 	auditevent.DefaultDetails = auditeventDescDetails.Default.(map[string]interface{})
+	// auditeventDescRetentionClass is the schema descriptor for retention_class field.
+	auditeventDescRetentionClass := auditeventFields[13].Descriptor()
+	// auditevent.DefaultRetentionClass holds the default value on creation for the retention_class field.
+	auditevent.DefaultRetentionClass = auditeventDescRetentionClass.Default.(string)
 	keyrootFields := schema.KeyRoot{}.Fields()
 	_ = keyrootFields
 	// keyrootDescDerivationScheme is the schema descriptor for derivation_scheme field.

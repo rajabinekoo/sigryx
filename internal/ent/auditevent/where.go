@@ -119,6 +119,11 @@ func StatusCode(v int) predicate.AuditEvent {
 	return predicate.AuditEvent(sql.FieldEQ(FieldStatusCode, v))
 }
 
+// RetentionClass applies equality check predicate on the "retention_class" field. It's identical to RetentionClassEQ.
+func RetentionClass(v string) predicate.AuditEvent {
+	return predicate.AuditEvent(sql.FieldEQ(FieldRetentionClass, v))
+}
+
 // OccurredAtEQ applies the EQ predicate on the "occurred_at" field.
 func OccurredAtEQ(v time.Time) predicate.AuditEvent {
 	return predicate.AuditEvent(sql.FieldEQ(FieldOccurredAt, v))
@@ -852,6 +857,71 @@ func StatusCodeLT(v int) predicate.AuditEvent {
 // StatusCodeLTE applies the LTE predicate on the "status_code" field.
 func StatusCodeLTE(v int) predicate.AuditEvent {
 	return predicate.AuditEvent(sql.FieldLTE(FieldStatusCode, v))
+}
+
+// RetentionClassEQ applies the EQ predicate on the "retention_class" field.
+func RetentionClassEQ(v string) predicate.AuditEvent {
+	return predicate.AuditEvent(sql.FieldEQ(FieldRetentionClass, v))
+}
+
+// RetentionClassNEQ applies the NEQ predicate on the "retention_class" field.
+func RetentionClassNEQ(v string) predicate.AuditEvent {
+	return predicate.AuditEvent(sql.FieldNEQ(FieldRetentionClass, v))
+}
+
+// RetentionClassIn applies the In predicate on the "retention_class" field.
+func RetentionClassIn(vs ...string) predicate.AuditEvent {
+	return predicate.AuditEvent(sql.FieldIn(FieldRetentionClass, vs...))
+}
+
+// RetentionClassNotIn applies the NotIn predicate on the "retention_class" field.
+func RetentionClassNotIn(vs ...string) predicate.AuditEvent {
+	return predicate.AuditEvent(sql.FieldNotIn(FieldRetentionClass, vs...))
+}
+
+// RetentionClassGT applies the GT predicate on the "retention_class" field.
+func RetentionClassGT(v string) predicate.AuditEvent {
+	return predicate.AuditEvent(sql.FieldGT(FieldRetentionClass, v))
+}
+
+// RetentionClassGTE applies the GTE predicate on the "retention_class" field.
+func RetentionClassGTE(v string) predicate.AuditEvent {
+	return predicate.AuditEvent(sql.FieldGTE(FieldRetentionClass, v))
+}
+
+// RetentionClassLT applies the LT predicate on the "retention_class" field.
+func RetentionClassLT(v string) predicate.AuditEvent {
+	return predicate.AuditEvent(sql.FieldLT(FieldRetentionClass, v))
+}
+
+// RetentionClassLTE applies the LTE predicate on the "retention_class" field.
+func RetentionClassLTE(v string) predicate.AuditEvent {
+	return predicate.AuditEvent(sql.FieldLTE(FieldRetentionClass, v))
+}
+
+// RetentionClassContains applies the Contains predicate on the "retention_class" field.
+func RetentionClassContains(v string) predicate.AuditEvent {
+	return predicate.AuditEvent(sql.FieldContains(FieldRetentionClass, v))
+}
+
+// RetentionClassHasPrefix applies the HasPrefix predicate on the "retention_class" field.
+func RetentionClassHasPrefix(v string) predicate.AuditEvent {
+	return predicate.AuditEvent(sql.FieldHasPrefix(FieldRetentionClass, v))
+}
+
+// RetentionClassHasSuffix applies the HasSuffix predicate on the "retention_class" field.
+func RetentionClassHasSuffix(v string) predicate.AuditEvent {
+	return predicate.AuditEvent(sql.FieldHasSuffix(FieldRetentionClass, v))
+}
+
+// RetentionClassEqualFold applies the EqualFold predicate on the "retention_class" field.
+func RetentionClassEqualFold(v string) predicate.AuditEvent {
+	return predicate.AuditEvent(sql.FieldEqualFold(FieldRetentionClass, v))
+}
+
+// RetentionClassContainsFold applies the ContainsFold predicate on the "retention_class" field.
+func RetentionClassContainsFold(v string) predicate.AuditEvent {
+	return predicate.AuditEvent(sql.FieldContainsFold(FieldRetentionClass, v))
 }
 
 // And groups predicates with the AND operator between them.

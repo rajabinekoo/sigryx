@@ -51,12 +51,14 @@ func auditMiddleware(audit portin.AuditUseCase) gin.HandlerFunc {
 		if actorType == "" {
 			actorType = "ANONYMOUS"
 		}
+		action := auditAction(c.Request.Method, routePath)
 		event := domain.AuditEvent{
 			OccurredAt: time.Now().UTC(), ActorType: actorType,
 			ActorID: metadata.Principal.ID, SessionID: metadata.Principal.SessionID,
-			Action: auditAction(c.Request.Method, routePath), Outcome: outcome,
+			Action: action, Outcome: outcome,
 			SourceIP: metadata.SourceIP, RequestID: metadata.RequestID,
 			Method: c.Request.Method, Path: c.Request.URL.Path, StatusCode: status,
+			RetentionClass: domain.DefaultAuditRetentionClass(action),
 		}
 		if err := audit.Record(context.WithoutCancel(c.Request.Context()), event); err != nil {
 			slog.Error("append audit event", slog.Any("err", err), slog.String("request_id", metadata.RequestID))

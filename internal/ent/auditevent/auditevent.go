@@ -37,6 +37,8 @@ const (
 	FieldStatusCode = "status_code"
 	// FieldDetails holds the string denoting the details field in the database.
 	FieldDetails = "details"
+	// FieldRetentionClass holds the string denoting the retention_class field in the database.
+	FieldRetentionClass = "retention_class"
 	// Table holds the table name of the auditevent in the database.
 	Table = "audit_events"
 )
@@ -56,6 +58,7 @@ var Columns = []string{
 	FieldPath,
 	FieldStatusCode,
 	FieldDetails,
+	FieldRetentionClass,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -79,6 +82,8 @@ var (
 	DefaultStatusCode int
 	// DefaultDetails holds the default value on creation for the "details" field.
 	DefaultDetails map[string]interface{}
+	// DefaultRetentionClass holds the default value on creation for the "retention_class" field.
+	DefaultRetentionClass string
 )
 
 // OrderOption defines the ordering options for the AuditEvent queries.
@@ -142,4 +147,9 @@ func ByPath(opts ...sql.OrderTermOption) OrderOption {
 // ByStatusCode orders the results by the status_code field.
 func ByStatusCode(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldStatusCode, opts...).ToFunc()
+}
+
+// ByRetentionClass orders the results by the retention_class field.
+func ByRetentionClass(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRetentionClass, opts...).ToFunc()
 }
