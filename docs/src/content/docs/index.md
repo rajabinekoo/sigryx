@@ -10,9 +10,9 @@ hero:
       link: ./usage/
       icon: right-arrow
       variant: primary
-    - text: Open the API client
-      link: ./getting-started/api-client/
-      icon: external
+    - text: Run with Docker
+      link: ./getting-started/installation/
+      icon: right-arrow
       variant: secondary
     - text: GitHub
       link: https://github.com/rajabinekoo/sigryx
@@ -20,9 +20,46 @@ hero:
       variant: minimal
 ---
 
+<p align="center">
+  <img src="./sigryx-logo.png" alt="Sigryx" width="760" />
+</p>
+
+## Pull one image and run
+
+Sigryx is distributed as a single image containing the server, Atlas, the matching migrations, and libsodium:
+
+```bash
+docker pull rajabinekoo/sigryx:latest
+```
+
+You can run that image against an existing PostgreSQL database with `docker run`, or place it beside PostgreSQL in your application's Docker Compose file.
+
+Minimal topology:
+
+```text
+PostgreSQL
+    │
+    │ POSTGRES_DSN
+    ▼
+Sigryx image
+    ├─ bootstrap configured PostgreSQL schema
+    ├─ Atlas migrate apply
+    └─ HTTP API + /docs
+```
+
+No Go installation, Atlas installation, or Sigryx source checkout is required to **use** the product.
+
+See [Install & run](/getting-started/installation/) for a copy/paste `docker run` command and a complete PostgreSQL + Sigryx Compose example.
+
+After startup, open the live REST API client exposed by the running server:
+
+```text
+http://localhost:8080/docs
+```
+
 Sigryx is a **self-hosted key and signing service** designed for backend systems that need deterministic accounts, controlled signing, sealed secret lifecycle, auditable access, and recoverable HD key roots without persisting end-user private keys.
 
-The current implementation is intentionally narrow and explicit. It provides:
+The current implementation provides:
 
 - a sealed/unsealed Vault lifecycle;
 - N-of-N unseal credentials with split owner/server material;
@@ -37,6 +74,19 @@ The current implementation is intentionally narrow and explicit. It provides:
 - append-only audit logging with configurable retention classes;
 - an automatically generated OpenAPI specification and an interactive REST API client at `/docs` on every running Sigryx server.
 
+## Docker deployment choices
+
+Choose the model that matches your application:
+
+| Situation | Recommended setup |
+| --- | --- |
+| PostgreSQL already exists | `docker run rajabinekoo/sigryx:<version>` with `POSTGRES_DSN` |
+| New/local application | Docker Compose with `postgres` + `sigryx` |
+| Existing Compose stack | Add only the `sigryx` service and point it to the existing PostgreSQL service |
+| Sigryx contributor | Clone the repository and use the bundled development Compose stack |
+
+Sigryx application tables live under configurable `POSTGRES_SCHEMA`, such as `sigryx_vault`, so the same PostgreSQL database can be shared with another backend while keeping Sigryx objects namespaced.
+
 ## Two kinds of documentation
 
 Sigryx exposes two complementary documentation surfaces:
@@ -44,10 +94,9 @@ Sigryx exposes two complementary documentation surfaces:
 1. **This documentation site** explains architecture, security properties, lifecycle, deployment, and recommended usage.
 2. **The live REST API client** is served by Sigryx itself at `http://<sigryx-host>:<port>/docs`. It is generated from the actual HTTP handlers and reads the live OpenAPI document from `/openapi.json`.
 
-For local development with the default HTTP address:
+For a default Docker deployment:
 
 ```text
-Documentation site:   http://localhost:4321
 Live API client:      http://localhost:8080/docs
 OpenAPI document:     http://localhost:8080/openapi.json
 Sigryx REST API:      http://localhost:8080/v1/...
@@ -60,26 +109,19 @@ The live API client is the best place to inspect exact request/response schemas.
 A typical deployment follows this order:
 
 ```text
-start process
+start container
     │
-    ├─ health endpoint is available
-    │
+    ├─ apply pending database migrations
+    ├─ health endpoint becomes available
     ├─ bootstrap Root Admin once
-    │
     ├─ authenticate
-    │
     ├─ initialize Vault once
     │      └─ receive N owner-held credentials exactly once
-    │
     ├─ submit all N credentials
     │      └─ Vault Encryption Key exists only in protected runtime memory
-    │
     ├─ create HD key root(s)
-    │
     ├─ create deterministic wallets
-    │
     ├─ sign application payloads / transactions
-    │
     └─ seal Vault
            └─ destroy runtime secret material
 ```
@@ -96,6 +138,7 @@ The documentation in this repository describes the code that exists in the curre
 
 ## Where to go next
 
+- Want a copy/paste Docker deployment? Read [Install & run](/getting-started/installation/).
 - Want the shortest path from zero to a signature? Read [5-minute usage](/usage/).
 - Want to understand how secrets are constructed and destroyed? Read [Seal & unseal](/concepts/seal-unseal/) and [Secure memory](/security/secure-memory/).
 - Want to embed Sigryx in an application? Read [Signing](/concepts/signing/) and the [HTTP API reference](/reference/http-api/).

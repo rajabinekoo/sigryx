@@ -1,0 +1,93 @@
+name: sigryx
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-sigryx}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sigryx}
+      POSTGRES_DB: ${POSTGRES_DB:-sigryx}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sigryx} -d ${POSTGRES_DB:-sigryx}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+
+  sigryx:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ${SIGRYX_IMAGE:-sigryx:dev}
+    restart: unless-stopped
+    init: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SERVICE_NAME: ${SERVICE_NAME:-sigryx}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+
+      POSTGRES_DSN: postgres://${POSTGRES_USER:-sigryx}:${POSTGRES_PASSWORD:-sigryx}@postgres:5432/${POSTGRES_DB:-sigryx}?sslmode=disable
+      POSTGRES_SCHEMA: ${POSTGRES_SCHEMA:-vault}
+      POSTGRES_AUTO_MIGRATE: ${POSTGRES_AUTO_MIGRATE:-true}
+      POSTGRES_MAX_CONNS: ${POSTGRES_MAX_CONNS:-10}
+      POSTGRES_MIN_CONNS: ${POSTGRES_MIN_CONNS:-2}
+      POSTGRES_CONNECT_TIMEOUT: ${POSTGRES_CONNECT_TIMEOUT:-5s}
+      POSTGRES_MAX_CONN_LIFETIME: ${POSTGRES_MAX_CONN_LIFETIME:-30m}
+      POSTGRES_MAX_CONN_IDLE_TIME: ${POSTGRES_MAX_CONN_IDLE_TIME:-5m}
+
+      # The bundled Compose stack keeps Sigryx on a stable internal port.
+      # Use SIGRYX_PORT to change only the port published on the host.
+      HTTP_ADDR: 0.0.0.0:8080
+      HTTP_READ_TIMEOUT: ${HTTP_READ_TIMEOUT:-15s}
+      HTTP_WRITE_TIMEOUT: ${HTTP_WRITE_TIMEOUT:-15s}
+      HTTP_IDLE_TIMEOUT: ${HTTP_IDLE_TIMEOUT:-60s}
+      HTTP_SHUTDOWN_TIMEOUT: ${HTTP_SHUTDOWN_TIMEOUT:-15s}
+
+      SETUP_TOKEN: ${SETUP_TOKEN:-sigryx-local-setup-token-change-before-production}
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-sigryx-local-jwt-secret-change-before-production}
+      AUTH_ISSUER: ${AUTH_ISSUER:-sigryx}
+      AUTH_AUDIENCE: ${AUTH_AUDIENCE:-sigryx-api}
+      AUTH_ACCESS_TTL: ${AUTH_ACCESS_TTL:-10m}
+      AUTH_REFRESH_TTL: ${AUTH_REFRESH_TTL:-168h}
+      TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS:-}
+
+      AUDIT_NORMAL_RETENTION_DAYS: ${AUDIT_NORMAL_RETENTION_DAYS:-30}
+      AUDIT_CRITICAL_RETENTION_DAYS: ${AUDIT_CRITICAL_RETENTION_DAYS:-365}
+      AUDIT_CLEANUP_INTERVAL: ${AUDIT_CLEANUP_INTERVAL:-6h}
+      AUDIT_CLEANUP_BATCH_SIZE: ${AUDIT_CLEANUP_BATCH_SIZE:-5000}
+
+      ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
+      ALERT_WEBHOOK_TIMEOUT: ${ALERT_WEBHOOK_TIMEOUT:-2s}
+      MAX_UNSEAL_SIZE: ${MAX_UNSEAL_SIZE:-10}
+    ports:
+      - "${SIGRYX_PORT:-8080}:8080"
+    cap_drop:
+      - ALL
+    cap_add:
+      - IPC_LOCK
+    security_opt:
+      - no-new-privileges:true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=32m
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/v1/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  postgres-data:

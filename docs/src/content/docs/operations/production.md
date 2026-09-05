@@ -3,7 +3,7 @@ title: Production deployment
 description: Recommended topology, TLS, database controls, startup/unseal workflow, observability, backup, and rollout checks.
 ---
 
-The repository's development compose file is not a complete production topology. Production deployment should treat Sigryx as a sensitive control-plane service.
+The repository includes a Docker-first local stack, while production deployment should still treat the Sigryx image as a sensitive control-plane service. The production image contains Sigryx, Atlas, the matching migrations, and libsodium in one container image.
 
 ## Recommended topology
 
@@ -25,8 +25,8 @@ load balancer / reverse proxy
            ▼
 ┌──────────────────────┐
 │ PostgreSQL           │
-│ encrypted roots     │
-│ auth/audit metadata │
+│ encrypted roots      │
+│ auth/audit metadata  │
 └──────────────────────┘
 
 optional:
@@ -63,23 +63,31 @@ The secure-memory subsystem may require OS support and libsodium. Validate the a
 
 Use a dedicated database role with only the privileges Sigryx needs.
 
+Sigryx application objects default to the `vault` schema and the schema is configurable through `POSTGRES_SCHEMA`. Runtime connections set `search_path` to `<POSTGRES_SCHEMA>,pg_catalog`, intentionally excluding `public` as an application fallback.
+
+When automatic migrations are enabled, the database role also needs the DDL privileges required by the release migrations. If you need a narrower steady-state runtime role, disable automatic migration and apply migrations through a separate privileged deployment job.
+
 The audit-retention design depends on the `sigryx_purge_audit_events` function and append-only triggers. Avoid granting application identities PostgreSQL superuser/bypass privileges that make these controls meaningless.
 
 ## Startup runbook
 
-A normal restart should look like:
+With the default image configuration (`POSTGRES_AUTO_MIGRATE=true`), a normal restart looks like:
 
 ```text
-1. start PostgreSQL
-2. apply/verify migrations
-3. start Sigryx
-4. health becomes available
-5. authenticate operators
-6. confirm Vault state = SEALED
-7. submit all N unseal credentials
-8. confirm state = UNSEALED
-9. enable/confirm dependent signing workloads
+1. PostgreSQL is reachable
+2. Sigryx container starts
+3. Atlas applies any pending migrations
+4. migration succeeds
+5. Sigryx process starts
+6. health becomes available
+7. authenticate operators
+8. confirm Vault state = SEALED
+9. submit all N unseal credentials
+10. confirm state = UNSEALED
+11. enable/confirm dependent signing workloads
 ```
+
+If your organization separates DDL privileges from application runtime privileges, set `POSTGRES_AUTO_MIGRATE=false` and run Atlas as an explicit deployment step before starting the new Sigryx image.
 
 Do not configure the service to silently embed all owner credentials into the same runtime environment just to automate step 7; that collapses the unseal custody boundary.
 

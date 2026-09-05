@@ -94,7 +94,7 @@ func (r *AuditRepository) PurgeExpired(
 ) (int, error) {
 	var deleted int
 	if err := r.pool.QueryRow(ctx, `
-SELECT public.sigryx_purge_audit_events($1, $2, $3)
+SELECT sigryx_purge_audit_events($1, $2, $3)
 `, string(retentionClass), before.UTC(), limit).Scan(&deleted); err != nil {
 		return 0, fmt.Errorf("purge expired audit events: %w", err)
 	}

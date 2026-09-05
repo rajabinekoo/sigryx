@@ -1,8 +1,13 @@
 .git
 .githooks
+.github
+.idea
 bin
 tmp
+docs
+assets
 **/.env
 **/vault-init.json
 **/approle.json
 **/*.log
+*.patch

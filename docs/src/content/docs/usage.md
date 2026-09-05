@@ -1,16 +1,93 @@
 ---
 title: 5-minute usage
-description: The shortest end-to-end Sigryx flow from first boot to a signature.
+description: Run the published Sigryx image and go from first boot to a signature.
 ---
 
-This page intentionally avoids architecture detail. It is the shortest complete path through Sigryx using `curl`.
+This page is intentionally practical. It starts with a running Docker image and then walks through the shortest complete Sigryx API flow.
 
-Assumptions:
+## 0. Start Sigryx
 
-- Sigryx is listening on `http://localhost:8080`.
-- PostgreSQL migrations have already been applied.
-- `SETUP_TOKEN` and `AUTH_JWT_SECRET` are configured.
-- `jq` is installed for shell examples.
+If Sigryx is already running in your application stack, skip to [Check health](#1-check-health).
+
+The easiest new installation is Docker Compose with PostgreSQL beside Sigryx. You do **not** need to clone the Sigryx repository.
+
+Create `compose.yml`:
+
+```yaml
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: sigryx
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: sigryx
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sigryx -d sigryx"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  sigryx:
+    image: rajabinekoo/sigryx:latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      HTTP_ADDR: 0.0.0.0:8080
+      POSTGRES_DSN: postgres://sigryx:${POSTGRES_PASSWORD}@postgres:5432/sigryx?sslmode=disable
+      POSTGRES_SCHEMA: sigryx_vault
+      POSTGRES_AUTO_MIGRATE: "true"
+      SETUP_TOKEN: ${SIGRYX_SETUP_TOKEN}
+      AUTH_JWT_SECRET: ${SIGRYX_AUTH_JWT_SECRET}
+    ports:
+      - "8080:8080"
+    cap_drop: [ALL]
+    cap_add: [IPC_LOCK]
+    security_opt:
+      - no-new-privileges:true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+
+volumes:
+  postgres-data:
+```
+
+Create `.env` beside it:
+
+```dotenv
+POSTGRES_PASSWORD=replace-with-a-random-password
+SIGRYX_SETUP_TOKEN=replace-with-a-random-setup-token
+SIGRYX_AUTH_JWT_SECRET=replace-with-a-random-jwt-secret
+```
+
+Generate three random values with:
+
+```bash
+openssl rand -hex 32
+```
+
+Load the setup token into your shell for the API examples:
+
+```bash
+set -a
+. ./.env
+set +a
+export SETUP_TOKEN="$SIGRYX_SETUP_TOKEN"
+```
+
+Start the stack:
+
+```bash
+docker compose up -d
+```
+
+The Sigryx image creates its configured PostgreSQL schema and applies pending Atlas migrations before starting the HTTP server.
+
+If you already have PostgreSQL and prefer one direct container command, see [Install & run](/getting-started/installation/#option-1-run-the-image-directly).
 
 Set the base URL:
 
@@ -248,4 +325,4 @@ Sigryx serves an interactive Scalar API client there. Its OpenAPI source is:
 http://localhost:8080/openapi.json
 ```
 
-Both routes are intentionally unauthenticated in the current HTTP middleware. Protect network access to the Sigryx management plane accordingly.
+For a non-default host port, replace `8080` with the port you published from Docker.
