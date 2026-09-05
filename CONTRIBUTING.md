@@ -10,6 +10,7 @@ Read the full contributor documentation:
 
 - [Development guide](./docs/src/content/docs/contributing/development.md)
 - [Documentation guide](./docs/src/content/docs/contributing/documentation.md)
+- [Release guide](./RELEASING.md)
 - [Architecture](./docs/src/content/docs/concepts/architecture.md)
 - [Security model](./docs/src/content/docs/security/security-model.md)
 
