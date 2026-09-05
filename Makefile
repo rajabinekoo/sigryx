@@ -3,12 +3,13 @@ SHELL := /usr/bin/env bash
 BIN_DIR	        := bin
 GO 							?= go
 ATLAS          	?= atlas
-COMPOSE_FILE   	:= deployments/docker-compose.yml
+COMPOSE_FILE   	:= compose.yml
 COMPOSE        	?= docker compose -f $(COMPOSE_FILE)
-IMAGE_REGISTRY 	?= crypto_payment
+IMAGE_REGISTRY 	?= rajabinekoo
 IMAGE_TAG      	?= dev
 
 export POSTGRES_DSN ?= postgres://sigryx:sigryx@localhost:5432/sigryx?sslmode=disable
+export POSTGRES_SCHEMA ?= vault
 
 dotenv = set -a; [ -f .env ] && . .env; set +a;
 
@@ -29,7 +30,7 @@ migrate-diff:
 
 .PHONY: migrate-up
 migrate-up:
-	@$(call dotenv) $(ATLAS) migrate apply --env local
+	@$(call dotenv) $(ATLAS) migrate apply --env runtime --var schema_name="$${POSTGRES_SCHEMA:-vault}"
 
 .PHONY: migrate-lint
 migrate-lint:
@@ -37,11 +38,11 @@ migrate-lint:
 
 .PHONY: migrate-status
 migrate-status:
-	@$(call dotenv) $(ATLAS) migrate status --env local
+	@$(call dotenv) $(ATLAS) migrate status --env runtime --var schema_name="$${POSTGRES_SCHEMA:-vault}"
 
 .PHONY: migrate-hash
 migrate-hash:
-	@$(call dotenv) $(ATLAS) migrate hash --env local
+	@$(call dotenv) $(ATLAS) migrate hash --dir file://migrations
 
 
 .PHONY: run-server
@@ -52,17 +53,27 @@ run-server:
 image:
 	docker build -f Dockerfile -t $(IMAGE_REGISTRY)/sigryx:$(IMAGE_TAG) .
 
-.PHONY: infra-up
-infra-up:
-	$(COMPOSE) up -d
+.PHONY: compose-up compose-down compose-reset compose-logs compose-ps
+compose-up:
+	$(COMPOSE) up --build -d
 
-.PHONY: infra-down
-infra-down:
+compose-down:
 	$(COMPOSE) down
 
-.PHONY: infra-logs
-infra-logs:
-	$(COMPOSE) logs -f
+compose-reset:
+	$(COMPOSE) down -v --remove-orphans
+
+compose-logs:
+	$(COMPOSE) logs -f sigryx
+
+compose-ps:
+	$(COMPOSE) ps
+
+# Backward-compatible aliases.
+.PHONY: infra-up infra-down infra-logs
+infra-up: compose-up
+infra-down: compose-down
+infra-logs: compose-logs
 
 .PHONY: fmt vet test test-race ent-generate check
 fmt:

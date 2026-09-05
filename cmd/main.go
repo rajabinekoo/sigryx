@@ -61,6 +61,7 @@ func run() error {
 	log.Info(
 		"sigryx is starting",
 		slog.String("http_addr", cfg.HTTPAddr),
+		slog.String("postgres_schema", cfg.PostgresSchema),
 	)
 
 	ctx, stop := signal.NotifyContext(
@@ -73,6 +74,7 @@ func run() error {
 	// ---- outbound persistence adapters ----
 	pool, err := pkgpostgres.New(ctx, pkgpostgres.Config{
 		DSN:             cfg.PostgresDSN,
+		Schema:          cfg.PostgresSchema,
 		MaxConns:        cfg.PostgresMaxConns,
 		MinConns:        cfg.PostgresMinConns,
 		MaxConnLifetime: cfg.PostgresMaxConnLifetime,

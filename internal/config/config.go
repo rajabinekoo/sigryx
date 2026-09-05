@@ -15,6 +15,7 @@ type Config struct {
 
 	// Postgres
 	PostgresDSN             string        `env:"POSTGRES_DSN,required"`
+	PostgresSchema          string        `env:"POSTGRES_SCHEMA" envDefault:"vault"`
 	PostgresMaxConns        int32         `env:"POSTGRES_MAX_CONNS" envDefault:"10"`
 	PostgresMinConns        int32         `env:"POSTGRES_MIN_CONNS" envDefault:"2"`
 	PostgresConnectTimeout  time.Duration `env:"POSTGRES_CONNECT_TIMEOUT" envDefault:"5s"`
@@ -48,7 +49,7 @@ type Config struct {
 	AlertWebhookTimeout time.Duration `env:"ALERT_WEBHOOK_TIMEOUT" envDefault:"2s"`
 
 	// App Envs
-	MaxUnsealSize int `env:"MAX_UNSEAL_SIZE,required"`
+	MaxUnsealSize int `env:"MAX_UNSEAL_SIZE" envDefault:"10"`
 }
 
 func Load() (Config, error) {

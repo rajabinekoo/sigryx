@@ -157,7 +157,7 @@ TRUNCATE audit_events;     -- rejected
 The retention worker uses the dedicated database function:
 
 ```text
-public.sigryx_purge_audit_events(...)
+<POSTGRES_SCHEMA>.sigryx_purge_audit_events(...)
 ```
 
 That function temporarily sets a transaction-local guard used by the trigger, performs only the bounded eligible delete, and turns the guard back off even on failure.

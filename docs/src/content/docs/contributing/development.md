@@ -26,7 +26,8 @@ pkg/
   cryptox/                   encryption/signature helpers
   hdwallet/                  HD derivation primitives
   securemem/                 protected-memory secret abstraction
-deployments/                 local infrastructure manifests
+compose.yml                  Docker-first local stack
+docker/                       container entrypoint and runtime helpers
 docs/                        this Starlight documentation site
 .github/workflows/           CI/deployment workflows
 ```
@@ -61,18 +62,19 @@ You will also need:
 - libsodium/runtime dependencies required by the protected-memory implementation;
 - Node.js 24+ only when working on the static documentation site.
 
-For a local database:
+For the fastest contributor bootstrap, use the complete Docker stack:
 
 ```bash
-make infra-up
+cp .env.example .env
+make compose-up
 ```
 
-The checked-in Compose file is intended to provide PostgreSQL for development. It is not a complete production Sigryx topology.
+This builds the same single Sigryx image used for distribution, starts PostgreSQL, applies Atlas migrations inside the Sigryx container, and starts the HTTP server.
 
 ## Configure the process
 
 ```bash
-cp .example.env .env
+cp .env.example .env
 ```
 
 At minimum, set the required database/auth/vault values described in [Configuration](/operations/configuration/).
@@ -89,6 +91,8 @@ service-account client secrets
 ```
 
 ## Database migrations
+
+The published image applies migrations automatically on normal startup. Native contributor commands still use the locally installed Atlas CLI. The configured application schema defaults to `vault`; migration commands pass `POSTGRES_SCHEMA` into the Atlas template directory.
 
 Inspect migration status:
 
@@ -121,6 +125,15 @@ make ent-generate
 Review generated changes before committing them.
 
 ## Run Sigryx
+
+Recommended container workflow:
+
+```bash
+make compose-up
+make compose-logs
+```
+
+For native Go development, first start PostgreSQL and apply migrations, then run:
 
 ```bash
 make run-server
